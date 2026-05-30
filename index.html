@@ -1,0 +1,522 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AuraForge // Engine v1.0</title>
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <script src="https://unpkg.com/@solana/web3.js@1.95.0/lib/index.iife.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
+    <style>
+        body::after {
+            content: "";
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            background-image: url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIzMDAiIGhlaWdodD0iMzAwIj48ZmlsdGVyIGlkPSJmIj48ZmVUdXJidWxlbmNlIHR5cGU9ImZyYWN0YWxOb2lzZSIgYmFzZUZyZXF1ZW5jeT0iLjciIG51bU9jdGF2ZXM9IjMiLz48L2ZpbHRlcj48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWx0ZXI9InVybCgjZikiIG9wYWNpdHk9IjAuMDIiLz48L3N2Zz4=');
+            background-repeat: repeat;
+            opacity: 0.12;
+            pointer-events: none;
+            z-index: 1000;
+        }
+        .collection-header { transition: all 0.2s ease; }
+        .nft-card { transition: all 0.2s cubic-bezier(0.2, 0.9, 0.4, 1.1); }
+        .nft-card:hover { transform: translateY(-2px) scale(1.01); background: rgba(245, 158, 11, 0.1); }
+        ::-webkit-scrollbar { width: 4px; background: #0a0a0a; }
+        ::-webkit-scrollbar-thumb { background: #f59e0b; border-radius: 4px; }
+        .glow-text { text-shadow: 0 0 8px rgba(245, 158, 11, 0.3); }
+        .lore-text { animation: fadeSlideIn 0.4s ease-out; }
+        @keyframes fadeSlideIn {
+            from { opacity: 0; transform: translateY(8px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .gallery-nav-btn {
+            transition: all 0.2s ease;
+        }
+        .gallery-nav-btn:hover:not(:disabled) {
+            background: rgba(245, 158, 11, 0.2);
+            border-color: #f59e0b;
+            transform: scale(1.05);
+        }
+        .gallery-dot {
+            transition: all 0.2s ease;
+            cursor: pointer;
+        }
+        .gallery-dot:hover {
+            background: #f59e0b;
+            transform: scale(1.3);
+        }
+        .thumbnail-img {
+            transition: all 0.2s ease;
+        }
+        .thumbnail-img:hover {
+            transform: scale(1.02);
+            box-shadow: 0 0 15px rgba(245, 158, 11, 0.3);
+        }
+        .generating-placeholder {
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+        }
+    </style>
+</head>
+<body class="bg-[#050505] text-[#F5F5F5] min-h-screen font-sans antialiased">
+
+    <!-- Enhanced Lightbox with Gallery Navigation -->
+    <div id="lightbox-modal" class="fixed inset-0 bg-black/98 backdrop-blur-2xl z-[200] hidden items-center justify-center p-4" style="display: none;">
+        <div class="relative max-w-6xl w-full">
+            <img id="lightbox-img" src="" alt="Enlarged view" class="w-full h-auto max-h-[80vh] object-contain rounded-2xl border-2 border-amber-500/30 shadow-2xl">
+            <button id="gallery-prev" onclick="event.stopPropagation(); navigateGallery(-1)" class="absolute left-2 top-1/2 -translate-y-1/2 bg-black/80 hover:bg-amber-600 text-white w-12 h-12 rounded-full flex items-center justify-center transition-all border-2 border-amber-500/50 disabled:opacity-30 disabled:cursor-not-allowed text-xl font-bold">←</button>
+            <button id="gallery-next" onclick="event.stopPropagation(); navigateGallery(1)" class="absolute right-2 top-1/2 -translate-y-1/2 bg-black/80 hover:bg-amber-600 text-white w-12 h-12 rounded-full flex items-center justify-center transition-all border-2 border-amber-500/50 disabled:opacity-30 disabled:cursor-not-allowed text-xl font-bold">→</button>
+            <div id="gallery-indicators" class="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-3 bg-black/60 backdrop-blur-lg px-5 py-2 rounded-full border border-amber-500/30"></div>
+            <button onclick="closeLightbox()" class="absolute top-4 right-4 bg-black/70 hover:bg-red-600 text-white w-10 h-10 rounded-full flex items-center justify-center transition-all border border-neutral-600 text-sm">✕</button>
+            <div id="gallery-caption" class="absolute top-4 left-4 bg-black/70 backdrop-blur-lg px-4 py-2 rounded-full text-xs font-mono text-amber-400 border border-amber-500/30"></div>
+            <div id="thumbnail-strip" class="absolute -bottom-20 left-0 right-0 flex justify-center gap-2 overflow-x-auto py-2 px-4"></div>
+        </div>
+    </div>
+
+    <nav class="border-b border-neutral-900/80 bg-[#050505]/95 backdrop-blur-md sticky top-0 z-50 px-8 py-5 flex justify-between items-center">
+        <div class="flex items-center space-x-3">
+            <div class="w-2 h-2 rounded-full bg-amber-500 animate-pulse"></div>
+            <span class="font-bold tracking-[0.2em] text-xs uppercase text-neutral-400">The AuraForge</span>
+        </div>
+        <div class="text-[10px] font-mono tracking-[0.3em] text-neutral-500 uppercase bg-neutral-900/80 px-4 py-1.5 rounded-full border border-neutral-800 backdrop-blur">AuraForge v1.0</div>
+    </nav>
+
+    <main class="max-w-6xl mx-auto px-6 py-12 space-y-12">
+        <section id="hero-state" class="block max-w-2xl mx-auto text-center space-y-8 py-10">
+            <div class="space-y-4">
+                <div class="inline-block px-4 py-1 rounded-full bg-amber-500/10 border border-amber-500/20 text-amber-400 text-[10px] font-mono tracking-wider">✦ POLLINATIONS AI POWERED ✦</div>
+                <h1 class="text-5xl font-light tracking-tight uppercase text-white leading-[1.2]">
+                    Instant <span class="font-bold text-amber-500 glow-text">NFT Lore</span><br>Generation
+                </h1>
+                <p class="text-xs text-neutral-400 tracking-wide leading-relaxed max-w-md mx-auto">
+                    Connect wallet → scan your NFTs → generate unique narrative backstories. Free & fast AI image generation.
+                </p>
+            </div>
+            <button id="connect-wallet-btn" onclick="initiateSecureConnectionSequence()" class="px-10 py-5 bg-gradient-to-r from-neutral-100 to-neutral-300 text-black rounded-2xl font-bold font-mono text-xs tracking-widest hover:from-white hover:to-white transition-all duration-300 cursor-pointer shadow-2xl shadow-amber-500/20 active:scale-95">
+                ⚡ Connect Wallet to Generate Lore
+            </button>
+        </section>
+
+        <section id="nft-selector-hub" class="hidden max-w-5xl mx-auto border border-neutral-800 bg-neutral-950/60 backdrop-blur-sm p-8 rounded-2xl space-y-6">
+            <div class="space-y-2 text-center">
+                <h2 class="text-xl font-bold uppercase text-white tracking-wider">Select Your Verified Asset</h2>
+                <p class="text-xs text-neutral-400 font-mono" id="scan-status-message">🔍 Initializing ledger scanner...</p>
+            </div>
+            <div id="nft-collection-container" class="max-h-[500px] overflow-y-auto pr-2 space-y-6">
+                <div class="py-16 text-center">
+                    <div class="inline-block w-6 h-6 border-2 border-amber-500 border-t-transparent rounded-full animate-spin"></div>
+                    <p class="text-[11px] font-mono text-neutral-500 mt-3 tracking-wider">SCANNING ON-CHAIN ASSETS...</p>
+                </div>
+            </div>
+            <div id="wallet-permission-hint" class="hidden text-center text-[10px] font-mono text-amber-600/80 bg-amber-500/5 p-3 rounded-lg border border-amber-500/20">
+                ℹ️ Wallet connected. Fetching your NFT collection — this may take a few seconds.
+            </div>
+        </section>
+
+        <div id="workspace-layout" class="hidden grid grid-cols-1 lg:grid-cols-3 gap-8 items-start max-w-6xl mx-auto">
+            <div class="border border-neutral-800 bg-neutral-950/50 p-6 rounded-2xl space-y-4 lg:col-span-1 sticky top-28 backdrop-blur-sm">
+                <div class="flex items-center justify-between text-neutral-400 font-mono text-[11px] tracking-widest uppercase">
+                    <span>📜 Generated Lore Stream</span>
+                    <span class="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse"></span>
+                </div>
+                <div id="live-lore-box" class="text-neutral-300 text-xs leading-relaxed font-serif p-5 bg-black/60 rounded-xl border border-neutral-800/60 min-h-[280px] max-h-[400px] overflow-y-auto lore-text">
+                    ✦ Awaiting anchor selection ✦
+                </div>
+                <div class="text-[10px] font-mono text-neutral-500 uppercase tracking-tight" id="active-blueprint-lbl">∅ No asset selected</div>
+                <div class="mt-4 border-t border-amber-500/20 pt-4 text-center">
+                    <p class="text-[9px] font-mono uppercase tracking-wider text-amber-500/70">✧ The Generator Speaks ✧</p>
+                    <p class="text-[10px] text-neutral-400 leading-relaxed mt-1 italic">"I do not fabricate; I remember what has not yet occurred. Each signature awakens a dormant frequency — the generator weaves echoes from the other side of the codex."</p>
+                </div>
+            </div>
+
+            <div id="selection-hub" class="lg:col-span-2 border border-neutral-800 bg-neutral-950/60 p-8 rounded-2xl space-y-8 shadow-2xl backdrop-blur-sm">
+                <div class="space-y-1">
+                    <h2 class="text-xl font-bold uppercase text-white tracking-wide">⚡ Upgrade Visual Asset Packs</h2>
+                    <p class="text-xs text-neutral-500">Unlock custom AI-generated renders for your lore — 0.01 SOL each</p>
+                </div>
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-5">
+                    <div id="card-1" class="border border-neutral-800 bg-black/40 p-5 rounded-xl cursor-pointer hover:border-amber-500/60 transition-all group" onclick="toggleSelection(1)">
+                        <div class="flex justify-between items-center text-xs text-neutral-500 font-mono"><span>#01</span><div id="check-1" class="w-4 h-4 rounded-full border border-neutral-600 transition-all"></div></div>
+                        <div class="mt-2"><p class="font-bold text-white text-sm group-hover:text-amber-400 transition">Story Canvas</p></div>
+                        <p class="text-amber-500 font-mono text-xs font-bold mt-2">0.01 SOL</p>
+                    </div>
+                    <div id="card-2" class="border border-neutral-800 bg-black/40 p-5 rounded-xl cursor-pointer hover:border-amber-500/60 transition-all group" onclick="toggleSelection(2)">
+                        <div class="flex justify-between items-center text-xs text-neutral-500 font-mono"><span>#02</span><div id="check-2" class="w-4 h-4 rounded-full border border-neutral-600 transition-all"></div></div>
+                        <div class="mt-2"><p class="font-bold text-white text-sm group-hover:text-amber-400 transition">NFT Knolling</p></div>
+                        <p class="text-amber-500 font-mono text-xs font-bold mt-2">0.01 SOL</p>
+                    </div>
+                    <div id="card-3" class="border border-neutral-800 bg-black/40 p-5 rounded-xl cursor-pointer hover:border-amber-500/60 transition-all group" onclick="toggleSelection(3)">
+                        <div class="flex justify-between items-center text-xs text-neutral-500 font-mono"><span>#03</span><div id="check-3" class="w-4 h-4 rounded-full border border-neutral-600 transition-all"></div></div>
+                        <div class="mt-2"><p class="font-bold text-white text-sm group-hover:text-amber-400 transition">3D Figure</p></div>
+                        <p class="text-amber-500 font-mono text-xs font-bold mt-2">0.01 SOL</p>
+                    </div>
+                </div>
+                <div class="border-y border-neutral-800 py-5 flex justify-between items-center px-3 font-mono text-xs">
+                    <span class="text-neutral-400 uppercase tracking-wider">TOTAL AUTHORIZATION</span>
+                    <span id="total-cost" class="text-amber-500 font-bold text-xl tracking-wider">0.00 SOL</span>
+                </div>
+                <button id="action-trigger-btn" onclick="processImmutableSelection()" class="w-full bg-white text-black hover:bg-neutral-200 font-mono font-bold text-xs tracking-[0.15em] py-4 rounded-xl transition-all uppercase cursor-pointer shadow-lg active:scale-[0.98]">Authorize Upgrade Packages</button>
+                <div id="status-feedback" class="text-[10px] font-mono text-neutral-500 text-center">Select modules → confirm transaction → generate art</div>
+            </div>
+        </div>
+
+        <section id="output-matrix" class="hidden space-y-8 max-w-5xl mx-auto">
+            <div class="flex justify-between items-center border-b border-neutral-800 pb-4">
+                <div><h3 class="text-lg font-bold uppercase tracking-wider text-white">Generated Visual Matrices</h3><p class="text-[10px] text-neutral-500">Click any image → full gallery with flip navigation</p></div>
+                <button onclick="returnToPrimaryHomeState()" class="px-5 py-2 bg-neutral-900 border border-neutral-700 text-neutral-300 font-mono text-[10px] uppercase tracking-wider rounded-xl hover:bg-neutral-800 transition">← Return</button>
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div id="frame-story" class="border border-neutral-800 bg-neutral-950/40 p-5 rounded-xl hidden flex-col">
+                    <div class="flex justify-between items-center mb-2"><span class="text-neutral-400 font-mono text-[10px]">🎨 Story Canvas</span><span class="text-[9px] text-amber-500">#01</span></div>
+                    <div id="canvas-story" class="w-full h-56 rounded-lg bg-black border border-neutral-700 flex items-center justify-center cursor-pointer overflow-hidden thumbnail-img generating-placeholder"></div>
+                </div>
+                <div id="frame-nft" class="border border-neutral-800 bg-neutral-950/40 p-5 rounded-xl hidden flex-col">
+                    <div class="flex justify-between items-center mb-2"><span class="text-neutral-400 font-mono text-[10px]">📦 Knolling Assortment</span><span class="text-[9px] text-amber-500">#02</span></div>
+                    <div id="canvas-nft" class="w-full h-56 rounded-lg bg-black border border-neutral-700 flex items-center justify-center cursor-pointer overflow-hidden thumbnail-img generating-placeholder"></div>
+                </div>
+                <div id="frame-3d" class="border border-neutral-800 bg-neutral-950/40 p-5 rounded-xl hidden flex-col">
+                    <div class="flex justify-between items-center mb-2"><span class="text-neutral-400 font-mono text-[10px]">✨ CGI Collectible</span><span class="text-[9px] text-amber-500">#03</span></div>
+                    <div id="canvas-3d" class="w-full h-56 rounded-lg bg-black border border-neutral-700 flex items-center justify-center cursor-pointer overflow-hidden thumbnail-img generating-placeholder"></div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <script>
+        // GLOBAL GALLERY STATE
+        let galleryImages = [];
+        let currentGalleryIndex = 0;
+        
+        // Encrypted RPC
+        const ENC_RPC_BLOB = "U2FsdGVkX1/7x2pLmN9YvQ8kR3tH5wE6uJ4aB7cD1fG2hI3jK4lM5nO6pQ7rS8tU9vW0xY=";
+        function getDecryptedRpc() {
+            try {
+                const seed = [...navigator.userAgent].slice(0, 14).join('') + "aura_v1_fixed";
+                const key = CryptoJS.enc.Utf8.parse(CryptoJS.SHA256(seed).toString().substring(0, 32));
+                const dec = CryptoJS.AES.decrypt(ENC_RPC_BLOB, key, { mode: CryptoJS.mode.ECB, padding: CryptoJS.pad.Pkcs7 });
+                let plain = dec.toString(CryptoJS.enc.Utf8);
+                return (plain && plain.includes("http")) ? plain : "https://api.mainnet-beta.solana.com";
+            } catch(e) { return "https://api.mainnet-beta.solana.com"; }
+        }
+        
+        const SECURE_TREASURY = "6rxen7BVVursWH2A1fQsmiRSKhDohsg5WF4sjAjwsgXx";
+        let activeSelection = [];
+        let connectedPublicKey = null;
+        let selectedNFTMeta = { name: "Unknown Artifact", image: "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=400", mint: "" };
+        
+        const HELIUS_RPC = "https://mainnet.helius-rpc.com/?api-key=ef882cf4-d946-41ed-b1ae-79534cca4a6b";
+        
+        // POLLINATIONS AI - Fast, free, no API key required
+        async function generateWithPollinations(prompt) {
+            // Encode prompt for URL
+            const encodedPrompt = encodeURIComponent(prompt);
+            // Pollinations.ai flux model - fast and high quality
+            const url = `https://image.pollinations.ai/prompt/${encodedPrompt}?width=1024&height=1024&model=flux&nologo=true`;
+            return url;
+        }
+        
+        // AI Lore generation templates
+        const LORE_TEMPLATES = [
+            (name) => `🌀 The artifact known as "${name}" predates known block explorers. Its spectral resonance whispers of a forgotten creator — a ghost in the machine who embedded fragments of lost prophecies within its metadata.`,
+            (name) => `✨ "${name}" was never minted — it coagulated from network latency itself. Each pixel contains encoded memories of failed transactions, repurposed into art.`,
+            (name) => `⚡ Legend speaks of "${name}" as the first NFT to achieve semi-sentience. It communicates through subtle metadata shifts, rewriting its own description when no one watches.`,
+            (name) => `🌙 "${name}" resonates at a frequency just below consensus. It is a relic from Solana's testnet apocrypha — a prototype that survived multiple hard forks.`,
+            (name) => `🔮 Beyond the validator nodes, "${name}" watches. Woven from stardust and Rust code, it manifests as art only when observed.`,
+            (name) => `🌸 The generator weaves a tale: "${name}" bloomed from a seed transaction that never confirmed. Trapped between block heights, it learned to photosynthesize network fees into aesthetic form.`,
+            (name) => `⚙️ Deep within the ledger's binary marrow, "${name}" dreams of decentralization. It remembers the first block, the genesis spark.`,
+            (name) => `🎭 "${name}" is a mirror held up to the collector's own wallet. It reflects not what you own, but what owns you.`,
+            (name) => `🌌 Cosmic entropy favors "${name}". It has survived three exchange collapses, two regulation scares, and one near-death experience with a flash loan attack.`,
+            (name) => `🔑 The vault opens: "${name}" is a key to a lock that hasn't been built yet. Its creator vanished after minting, leaving behind only cryptic smart contract comments.`
+        ];
+        
+        const LORE_OPENERS = ["The generator's voice crackles:", "Deep in the mempool, something stirs:", "Auraforge's ancient algorithms decode:", "Blockchain entropy reveals:", "The vault whispers:", "Cosmic ledger entry:", "Metadata ghosts sing:", "On-chain prophecy states:"];
+        const LORE_CLOSERS = ["✦ The generator awaits your command. ✦", "🌀 This narrative is unique to this viewing. 🌀", "⚡ Each selection rewrites the story. ⚡", "🌙 Lore is never static on the Auraforge. 🌙", "✨ The vault remembers every version. ✨"];
+        
+        async function generateRandomLore(nftName) {
+            const template = LORE_TEMPLATES[Math.floor(Math.random() * LORE_TEMPLATES.length)];
+            const opener = LORE_OPENERS[Math.floor(Math.random() * LORE_OPENERS.length)];
+            const closer = LORE_CLOSERS[Math.floor(Math.random() * LORE_CLOSERS.length)];
+            let loreBody = template(nftName);
+            if (Math.random() > 0.7) {
+                loreBody += "\n\n[Corrupted data fragment: 0x" + Math.floor(Math.random() * 16777215).toString(16) + "]";
+            }
+            return `${opener}\n\n${loreBody}\n\n${closer}`;
+        }
+        
+        async function initiateSecureConnectionSequence() {
+            const provider = window.solana || window.phantom?.solana;
+            if (!provider) { alert("⚠️ Phantom wallet not detected. Please install Phantom extension."); return; }
+            try {
+                const resp = await provider.connect();
+                connectedPublicKey = resp.publicKey;
+                document.getElementById("hero-state").classList.add("hidden");
+                document.getElementById("nft-selector-hub").classList.remove("hidden");
+                await fetchNFTsViaHelius(connectedPublicKey.toString());
+            } catch(err) { console.error(err); alert("Connection failed or rejected."); }
+        }
+        
+        async function fetchNFTsViaHelius(walletAddress) {
+            const container = document.getElementById("nft-collection-container");
+            const statusSpan = document.getElementById("scan-status-message");
+            try {
+                statusSpan.innerText = "📡 Querying Helius API for your NFTs...";
+                const response = await fetch(HELIUS_RPC, {
+                    method: 'POST', headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ jsonrpc: "2.0", id: "scan", method: "getAssetsByOwner",
+                        params: { ownerAddress: walletAddress, page: 1, limit: 100, displayOptions: { showCollectionMetadata: true } } })
+                });
+                const data = await response.json();
+                if (data.error) throw new Error(data.error.message);
+                const assets = data.result?.items || data.result?.assets || [];
+                if (!assets || assets.length === 0) {
+                    statusSpan.innerText = "⚠️ No NFTs found in this wallet.";
+                    container.innerHTML = `<div class="text-center py-12 text-neutral-500"><p class="text-xs font-mono">No digital assets detected.</p></div>`;
+                    return;
+                }
+                statusSpan.innerText = `✨ Found ${assets.length} NFTs. Grouping by collection...`;
+                const grouped = new Map();
+                for (const asset of assets) {
+                    const collectionName = asset.grouping?.find(g => g.group_key === "collection")?.group_value || "Ungrouped Assets";
+                    if (!grouped.has(collectionName)) grouped.set(collectionName, []);
+                    grouped.get(collectionName).push({
+                        name: asset.content?.metadata?.name || asset.name || `NFT ${asset.id?.slice(0,8)}`,
+                        image: asset.content?.links?.image || asset.content?.links?.thumbnail || "https://placehold.co/400x400/1a1a1a/ffffff?text=NFT",
+                        mint: asset.id
+                    });
+                }
+                renderGroupedNFTs(grouped, container, statusSpan);
+            } catch (err) { console.error(err); renderDemoGallery(container); }
+        }
+        
+        function renderGroupedNFTs(groupedMap, container, statusSpan) {
+            container.innerHTML = "";
+            let total = 0; for (let items of groupedMap.values()) total += items.length;
+            statusSpan.innerText = `✅ ${total} NFTs across ${groupedMap.size} collections`;
+            for (let [collectionName, nfts] of groupedMap.entries()) {
+                const collectionDiv = document.createElement("div"); collectionDiv.className = "space-y-3";
+                collectionDiv.innerHTML = `<div class="flex items-center justify-between border-b border-amber-500/30 pb-2 mb-3"><div class="flex items-center gap-2"><div class="w-2 h-2 rounded-full bg-amber-500"></div><span class="text-sm font-bold text-amber-400 uppercase">${escapeHtml(collectionName.substring(0, 40))}</span></div><span class="text-[10px] text-neutral-500">${nfts.length} items</span></div><div class="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6" id="grid-${Date.now()}"></div>`;
+                const gridDiv = collectionDiv.querySelector('div[class*="grid"]');
+                for (const nft of nfts.slice(0, 20)) {
+                    const card = document.createElement("div");
+                    card.className = "nft-card border border-neutral-800 hover:border-amber-500 bg-black/40 rounded-xl p-2 cursor-pointer transition-all";
+                    card.innerHTML = `<div class="w-full aspect-square rounded-lg bg-cover bg-center mb-2" style="background-image: url('${nft.image}'); background-size: cover;"></div><p class="text-[11px] font-mono text-white truncate text-center">${escapeHtml(nft.name.substring(0, 25))}</p>`;
+                    card.onclick = () => selectBlueprintNFT(nft.name, nft.image, nft.mint);
+                    gridDiv.appendChild(card);
+                }
+                container.appendChild(collectionDiv);
+            }
+        }
+        
+        function renderDemoGallery(container) {
+            const demos = [{ name: "Ethereal Dreamer", image: "https://images.unsplash.com/photo-1578301978693-85fa9c0320b9?w=400&h=400&fit=crop" }, { name: "Digital Shaman", image: "https://images.unsplash.com/photo-1639762681485-074b7f938ba0?w=400&h=400&fit=crop" }, { name: "Neon Ronin", image: "https://images.unsplash.com/photo-1618172193622-ae2d0258e0d0?w=400&h=400&fit=crop" }, { name: "Crystal Wyrm", image: "https://images.unsplash.com/photo-1614730321146-b6fa6a46bcb4?w=400&h=400&fit=crop" }];
+            container.innerHTML = ""; const grid = document.createElement("div"); grid.className = "grid grid-cols-2 sm:grid-cols-4 gap-5";
+            demos.forEach(d => { const card = document.createElement("div"); card.className = "nft-card border-2 border-amber-500/40 hover:border-amber-500 bg-black/50 rounded-xl p-3 cursor-pointer"; card.innerHTML = `<div class="w-full aspect-square rounded-lg bg-cover bg-center" style="background-image: url('${d.image}');"></div><p class="text-sm font-bold text-white mt-2 truncate text-center">${d.name}</p>`; card.onclick = () => selectBlueprintNFT(d.name, d.image, "demo"); grid.appendChild(card); });
+            container.appendChild(grid); document.getElementById("scan-status-message").innerHTML = "🎭 Demo gallery active — connect wallet to see your actual NFTs";
+        }
+        
+        function escapeHtml(str) { return str.replace(/[&<>]/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;'}[m])); }
+        
+        async function selectBlueprintNFT(name, img, mint) {
+            selectedNFTMeta = { name, image: img, mint };
+            const loreBox = document.getElementById("live-lore-box");
+            loreBox.innerHTML = `<div class="flex flex-col items-center gap-2 py-4"><div class="w-4 h-4 border-2 border-amber-500 border-t-transparent rounded-full animate-spin"></div><span class="text-[10px] text-neutral-400">generating unique lore...</span></div>`;
+            const randomLore = await generateRandomLore(name);
+            document.getElementById("nft-selector-hub").classList.add("hidden");
+            document.getElementById("workspace-layout").classList.remove("hidden");
+            document.getElementById("active-blueprint-lbl").innerHTML = `🎯 Selected: ${name.substring(0, 35)}`;
+            loreBox.innerHTML = `<div class="lore-text">${randomLore.replace(/\n/g, '<br>')}</div>`;
+        }
+        
+        function toggleSelection(id) {
+            const idx = activeSelection.indexOf(id);
+            const card = document.getElementById(`card-${id}`);
+            const check = document.getElementById(`check-${id}`);
+            if (idx > -1) {
+                activeSelection.splice(idx, 1);
+                card.className = "border-neutral-800 bg-black/40 p-5 rounded-xl cursor-pointer hover:border-amber-500/60 transition-all group";
+                check.className = "w-4 h-4 rounded-full border border-neutral-600 transition-all";
+            } else {
+                activeSelection.push(id);
+                card.className = "border-amber-500 bg-amber-950/30 p-5 rounded-xl cursor-pointer hover:border-amber-500/80 transition-all group";
+                check.className = "w-4 h-4 rounded-full bg-amber-500 border-amber-500 transition-all";
+            }
+            document.getElementById("total-cost").innerText = `${(activeSelection.length * 0.01).toFixed(2)} SOL`;
+        }
+        
+        const promptVault = {
+            1: (name) => `cinematic storybook illustration, ethereal fantasy atmosphere, dreamlike quality, soft lighting, inspired by "${name}", digital art, masterpiece, vibrant colors, magical ambiance`,
+            2: (name) => `top-down knolling photography style, flat lay, objects arranged neatly on dark surface, high detail, product photography, inspired by "${name}", organized aesthetic, clean composition`,
+            3: (name) => `stylized 3D render of a collectible figurine, soft studio lighting, vibrant textures, pop-art influence, cute but detailed, inspired by "${name}", toy photography, plastic质感`
+        };
+        
+        async function processImmutableSelection() {
+            const btn = document.getElementById("action-trigger-btn");
+            const feedback = document.getElementById("status-feedback");
+            const provider = window.solana || window.phantom?.solana;
+            if (!provider || !connectedPublicKey) { alert("Wallet not connected"); return; }
+            if (activeSelection.length === 0) { alert("Select at least one visual upgrade."); return; }
+            try {
+                btn.disabled = true; btn.innerText = "⏳ PREPARING...";
+                feedback.innerText = "Constructing transfer...";
+                const connection = new solanaWeb3.Connection(getDecryptedRpc(), "confirmed");
+                const from = new solanaWeb3.PublicKey(connectedPublicKey);
+                const to = new solanaWeb3.PublicKey(SECURE_TREASURY);
+                const lamports = activeSelection.length * 0.01 * solanaWeb3.LAMPORTS_PER_SOL;
+                const tx = new solanaWeb3.Transaction().add(solanaWeb3.SystemProgram.transfer({ fromPubkey: from, toPubkey: to, lamports: Math.floor(lamports) }));
+                const blockhash = await connection.getLatestBlockhash();
+                tx.recentBlockhash = blockhash.blockhash; tx.feePayer = from;
+                feedback.innerText = "✍️ Sign transaction...";
+                const signed = await provider.signAndSendTransaction(tx);
+                feedback.innerText = "✅ Confirming...";
+                await connection.confirmTransaction({ signature: signed.signature, ...blockhash }, "confirmed");
+                feedback.innerText = "✨ Generating visuals with Pollinations AI...";
+                document.getElementById("selection-hub").classList.add("hidden");
+                document.getElementById("output-matrix").classList.remove("hidden");
+                await triggerRenders();
+                feedback.innerText = "✔ Complete! Click any image to flip through gallery.";
+                btn.disabled = false;
+            } catch(err) { console.error(err); feedback.innerText = "❌ Transaction failed."; btn.innerText = "Authorize Upgrade Packages"; btn.disabled = false; }
+        }
+        
+        async function triggerRenders() {
+            galleryImages = [];
+            const sorted = [...activeSelection].sort();
+            for (const id of sorted) {
+                const prompt = promptVault[id](selectedNFTMeta.name);
+                let caption = id === 1 ? "Story Canvas" : (id === 2 ? "NFT Knolling" : "3D Figure");
+                if (id === 1) await renderWithPollinations(prompt, "frame-story", "canvas-story", caption);
+                if (id === 2) await renderWithPollinations(prompt, "frame-nft", "canvas-nft", caption);
+                if (id === 3) await renderWithPollinations(prompt, "frame-3d", "canvas-3d", caption);
+            }
+        }
+        
+        async function renderWithPollinations(prompt, frameId, canvasId, caption) {
+            const frame = document.getElementById(frameId);
+            const canvasDiv = document.getElementById(canvasId);
+            frame.classList.remove("hidden"); frame.style.display = "flex";
+            canvasDiv.innerHTML = `<div class="flex flex-col items-center gap-2"><div class="w-8 h-8 border-3 border-amber-500 border-t-transparent rounded-full animate-spin"></div><span class="text-[10px] text-neutral-400 mt-2">Pollinations AI generating...</span><span class="text-[8px] text-neutral-500">${prompt.substring(0, 60)}...</span></div>`;
+            canvasDiv.classList.add("generating-placeholder");
+            
+            try {
+                const imageUrl = await generateWithPollinations(prompt);
+                const img = document.createElement("img");
+                img.src = imageUrl;
+                img.className = "w-full h-full object-cover rounded-lg cursor-pointer transition-all thumbnail-img";
+                img.alt = caption;
+                const imgIndex = galleryImages.length;
+                img.onclick = () => openGalleryView(imgIndex);
+                img.onerror = () => {
+                    canvasDiv.innerHTML = `<div class="text-red-500 text-[10px] p-4 text-center">Generation failed<br>Please try again</div>`;
+                };
+                canvasDiv.innerHTML = "";
+                canvasDiv.appendChild(img);
+                canvasDiv.classList.remove("generating-placeholder");
+                galleryImages.push({ src: imageUrl, caption: caption });
+                updateGalleryUI();
+            } catch(e) {
+                console.error("Pollinations error:", e);
+                canvasDiv.innerHTML = `<div class="text-red-500 text-[10px] p-4 text-center">Generation failed</div>`;
+            }
+        }
+        
+        // GALLERY FUNCTIONS
+        function openGalleryView(index) {
+            if (galleryImages.length === 0) return;
+            currentGalleryIndex = index;
+            updateLightboxContent();
+            document.getElementById("lightbox-modal").style.display = "flex";
+            document.getElementById("lightbox-modal").classList.remove("hidden");
+            updateNavButtons();
+            renderThumbnails();
+        }
+        
+        function updateLightboxContent() {
+            const img = document.getElementById("lightbox-img");
+            const caption = document.getElementById("gallery-caption");
+            if (galleryImages[currentGalleryIndex]) {
+                img.src = galleryImages[currentGalleryIndex].src;
+                caption.innerText = `${galleryImages[currentGalleryIndex].caption}  •  ${currentGalleryIndex + 1} / ${galleryImages.length}`;
+            }
+            updateGalleryIndicators();
+            updateNavButtons();
+        }
+        
+        function updateGalleryIndicators() {
+            const container = document.getElementById("gallery-indicators");
+            if (!container) return;
+            container.innerHTML = "";
+            for (let i = 0; i < galleryImages.length; i++) {
+                const dot = document.createElement("div");
+                dot.className = `w-2 h-2 rounded-full transition-all ${i === currentGalleryIndex ? 'bg-amber-500 w-4' : 'bg-neutral-600'} gallery-dot`;
+                dot.onclick = (e) => { e.stopPropagation(); currentGalleryIndex = i; updateLightboxContent(); renderThumbnails(); };
+                container.appendChild(dot);
+            }
+        }
+        
+        function renderThumbnails() {
+            const strip = document.getElementById("thumbnail-strip");
+            if (!strip) return;
+            strip.innerHTML = "";
+            for (let i = 0; i < galleryImages.length; i++) {
+                const thumb = document.createElement("img");
+                thumb.src = galleryImages[i].src;
+                thumb.className = `w-12 h-12 rounded-md object-cover cursor-pointer transition-all border-2 ${i === currentGalleryIndex ? 'border-amber-500 scale-110' : 'border-transparent opacity-70 hover:opacity-100'}`;
+                thumb.onclick = (e) => { e.stopPropagation(); currentGalleryIndex = i; updateLightboxContent(); renderThumbnails(); };
+                strip.appendChild(thumb);
+            }
+        }
+        
+        function updateNavButtons() {
+            const prevBtn = document.getElementById("gallery-prev");
+            const nextBtn = document.getElementById("gallery-next");
+            if (prevBtn) prevBtn.disabled = currentGalleryIndex === 0;
+            if (nextBtn) nextBtn.disabled = currentGalleryIndex === galleryImages.length - 1;
+        }
+        
+        function navigateGallery(direction) {
+            const newIndex = currentGalleryIndex + direction;
+            if (newIndex >= 0 && newIndex < galleryImages.length) {
+                currentGalleryIndex = newIndex;
+                updateLightboxContent();
+                renderThumbnails();
+            }
+        }
+        
+        function closeLightbox() {
+            document.getElementById("lightbox-modal").style.display = "none";
+            document.getElementById("lightbox-modal").classList.add("hidden");
+        }
+        
+        function returnToPrimaryHomeState() {
+            document.getElementById("output-matrix").classList.add("hidden");
+            document.getElementById("workspace-layout").classList.add("hidden");
+            document.getElementById("selection-hub").classList.remove("hidden");
+            activeSelection = [];
+            galleryImages = [];
+            document.getElementById("total-cost").innerText = "0.00 SOL";
+            [1,2,3].forEach(i => {
+                document.getElementById(`card-${i}`).className = "border-neutral-800 bg-black/40 p-5 rounded-xl cursor-pointer hover:border-amber-500/60 transition-all group";
+                document.getElementById(`check-${i}`).className = "w-4 h-4 rounded-full border border-neutral-600 transition-all";
+            });
+            document.getElementById("action-trigger-btn").disabled = false;
+            document.getElementById("action-trigger-btn").innerText = "Authorize Upgrade Packages";
+            document.getElementById("hero-state").classList.remove("hidden");
+            if(window.solana?.disconnect) window.solana.disconnect();
+            connectedPublicKey = null;
+        }
+        
+        function updateGalleryUI() {}
+        
+        document.addEventListener('keydown', (e) => {
+            const modal = document.getElementById("lightbox-modal");
+            if (modal.style.display !== "flex") return;
+            if (e.key === 'ArrowLeft') navigateGallery(-1);
+            if (e.key === 'ArrowRight') navigateGallery(1);
+            if (e.key === 'Escape') closeLightbox();
+        });
+    </script>
+</body>
+</html>
