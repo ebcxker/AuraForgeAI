@@ -1,0 +1,464 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AuraForge // Pollinations AI • Test Mode (Free)</title>
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <script src="https://unpkg.com/@solana/web3.js@1.95.0/lib/index.iife.js"></script>
+    <style>
+        body::after {
+            content: "";
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            background-image: url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIzMDAiIGhlaWdodD0iMzAwIj48ZmlsdGVyIGlkPSJmIj48ZmVUdXJidWxlbmNlIHR5cGU9ImZyYWN0YWxOb2lzZSIgYmFzZUZyZXF1ZW5jeT0iLjciIG51bU9jdGF2ZXM9IjMiLz48L2ZpbHRlcj48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWx0ZXI9InVybCgjZikiIG9wYWNpdHk9IjAuMDIiLz48L3N2Zz4=');
+            background-repeat: repeat;
+            opacity: 0.12;
+            pointer-events: none;
+            z-index: 1000;
+        }
+        .nft-card { transition: all 0.2s cubic-bezier(0.2, 0.9, 0.4, 1.1); }
+        .nft-card:hover { transform: translateY(-2px) scale(1.01); background: rgba(245, 158, 11, 0.1); }
+        ::-webkit-scrollbar { width: 4px; background: #0a0a0a; }
+        ::-webkit-scrollbar-thumb { background: #f59e0b; border-radius: 4px; }
+        .glow-text { text-shadow: 0 0 8px rgba(245, 158, 11, 0.3); }
+        .lore-text { animation: fadeSlideIn 0.4s ease-out; }
+        @keyframes fadeSlideIn {
+            from { opacity: 0; transform: translateY(8px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .saved-item {
+            transition: all 0.2s ease;
+        }
+        .saved-item:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 10px 25px -5px rgba(245, 158, 11, 0.2);
+        }
+        .empty-state {
+            background: linear-gradient(135deg, rgba(20, 20, 30, 0.8), rgba(10, 10, 15, 0.9));
+        }
+        .test-badge {
+            background: linear-gradient(135deg, #10b981, #059669);
+            box-shadow: 0 0 12px rgba(16,185,129,0.4);
+        }
+    </style>
+</head>
+<body class="bg-[#050505] text-[#F5F5F5] min-h-screen font-sans antialiased">
+
+    <!-- Lightbox Modal -->
+    <div id="lightbox-modal" class="fixed inset-0 bg-black/98 backdrop-blur-2xl z-[200] hidden items-center justify-center p-4" style="display: none;">
+        <div class="relative max-w-5xl w-full">
+            <img id="lightbox-img" src="" alt="Enlarged" class="w-full h-auto max-h-[80vh] object-contain rounded-2xl border-2 border-amber-500/30">
+            <button id="gallery-prev" onclick="event.stopPropagation(); navigateGallery(-1)" class="absolute left-2 top-1/2 -translate-y-1/2 bg-black/80 hover:bg-amber-600 text-white w-12 h-12 rounded-full flex items-center justify-center border-2 border-amber-500/50 disabled:opacity-30 text-xl font-bold">←</button>
+            <button id="gallery-next" onclick="event.stopPropagation(); navigateGallery(1)" class="absolute right-2 top-1/2 -translate-y-1/2 bg-black/80 hover:bg-amber-600 text-white w-12 h-12 rounded-full flex items-center justify-center border-2 border-amber-500/50 disabled:opacity-30 text-xl font-bold">→</button>
+            <div id="gallery-indicators" class="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-3 bg-black/60 backdrop-blur-lg px-5 py-2 rounded-full"></div>
+            <button onclick="closeLightbox()" class="absolute top-4 right-4 bg-black/70 hover:bg-red-600 w-10 h-10 rounded-full flex items-center justify-center border border-neutral-600">✕</button>
+            <div id="gallery-caption" class="absolute top-4 left-4 bg-black/70 backdrop-blur-lg px-4 py-2 rounded-full text-xs font-mono text-amber-400"></div>
+        </div>
+    </div>
+
+    <nav class="border-b border-neutral-900/80 bg-[#050505]/95 backdrop-blur-md sticky top-0 z-50 px-8 py-5 flex justify-between items-center">
+        <div class="flex items-center space-x-3">
+            <div class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></div>
+            <span class="font-bold tracking-[0.2em] text-xs uppercase text-neutral-400">AuraForge // Pollinations AI • TEST MODE</span>
+        </div>
+        <div class="flex gap-3 items-center">
+            <div class="test-badge text-white text-[10px] font-mono px-3 py-1.5 rounded-full font-bold tracking-wide">🧪 FREE TEST • NO SOL</div>
+            <div class="text-[10px] font-mono tracking-[0.3em] text-neutral-500 uppercase bg-neutral-900/80 px-4 py-1.5 rounded-full border border-neutral-800 backdrop-blur">v3.0-test</div>
+        </div>
+    </nav>
+
+    <main class="max-w-6xl mx-auto px-6 py-12 space-y-12">
+        <section id="hero-state" class="block max-w-2xl mx-auto text-center space-y-8 py-10">
+            <div class="space-y-4">
+                <div class="inline-block px-4 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-[10px] font-mono tracking-wider">✦ FREE TESTNET EDITION ✦</div>
+                <h1 class="text-5xl font-light tracking-tight uppercase text-white leading-[1.2]">
+                    <span class="font-bold text-emerald-400 glow-text">0 SOL</span> NFT Alchemy
+                </h1>
+                <p class="text-xs text-neutral-400 tracking-wide leading-relaxed max-w-md mx-auto">
+                    Connect wallet → select your NFT → generate premium AI artwork instantly. No cost, test version.
+                </p>
+            </div>
+            <button id="connect-wallet-btn" onclick="connectWallet()" class="px-10 py-5 bg-gradient-to-r from-emerald-400 to-emerald-600 text-black rounded-2xl font-bold font-mono text-xs tracking-widest hover:from-emerald-300 hover:to-emerald-500 transition-all duration-300 cursor-pointer shadow-2xl shadow-emerald-500/30 active:scale-95">
+                ⚡ Connect Wallet (Test) 
+            </button>
+        </section>
+
+        <section id="nft-selector-hub" class="hidden max-w-5xl mx-auto border border-neutral-800 bg-neutral-950/60 backdrop-blur-sm p-8 rounded-2xl space-y-6">
+            <div class="space-y-2 text-center">
+                <h2 class="text-xl font-bold uppercase text-white tracking-wider">Select Your NFT</h2>
+                <p class="text-xs text-neutral-400 font-mono" id="scan-status-message">🔍 Loading your NFTs from wallet...</p>
+                <p class="text-[10px] text-emerald-400/80 font-mono">✨ Test version: No payment required ✨</p>
+            </div>
+            <div id="nft-collection-container" class="max-h-[500px] overflow-y-auto pr-2">
+                <div class="py-16 text-center">
+                    <div class="inline-block w-6 h-6 border-2 border-emerald-500 border-t-transparent rounded-full animate-spin"></div>
+                    <p class="text-[11px] font-mono text-neutral-500 mt-3">FETCHING YOUR DIGITAL ASSETS...</p>
+                </div>
+            </div>
+        </section>
+
+        <div id="workspace-layout" class="hidden grid grid-cols-1 lg:grid-cols-3 gap-8 items-start max-w-6xl mx-auto">
+            <div class="border border-neutral-800 bg-neutral-950/50 p-6 rounded-2xl space-y-4 lg:col-span-1 sticky top-28 backdrop-blur-sm">
+                <div class="flex items-center justify-between text-neutral-400 font-mono text-[11px] tracking-widest uppercase">
+                    <span>📜 Generated Lore</span>
+                    <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                </div>
+                <div id="live-lore-box" class="text-neutral-300 text-xs leading-relaxed font-serif p-5 bg-black/60 rounded-xl border border-neutral-800/60 min-h-[280px] max-h-[400px] overflow-y-auto">
+                    ✦ Select an NFT to generate its story ✦
+                </div>
+                <div class="text-[10px] font-mono text-neutral-500 uppercase tracking-tight" id="active-blueprint-lbl">∅ No NFT selected</div>
+                <div class="mt-4 border-t border-emerald-500/20 pt-4 text-center">
+                    <p class="text-[9px] font-mono uppercase tracking-wider text-emerald-500/70">✧ Pollinations Flux Core (Free) ✧</p>
+                    <p class="text-[10px] text-neutral-400 leading-relaxed mt-1 italic">"Test mode — unlimited imagination, zero SOL."</p>
+                </div>
+            </div>
+
+            <div id="selection-hub" class="lg:col-span-2 border border-neutral-800 bg-neutral-950/60 p-8 rounded-2xl space-y-8 shadow-2xl backdrop-blur-sm">
+                <div class="space-y-1">
+                    <h2 class="text-xl font-bold uppercase text-white tracking-wide">⚡ Upgrade Visual Packs (FREE)</h2>
+                    <p class="text-xs text-emerald-400">Test version: Generate any pack at 0 SOL — just click and create</p>
+                </div>
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-5">
+                    <div id="card-1" class="border border-neutral-800 bg-black/40 p-5 rounded-xl cursor-pointer hover:border-emerald-500/60 transition-all group" onclick="toggleSelection(1)">
+                        <div class="flex justify-between items-center text-xs text-neutral-500 font-mono"><span>#01</span><div id="check-1" class="w-4 h-4 rounded-full border border-neutral-600 transition-all"></div></div>
+                        <div class="mt-2"><p class="font-bold text-white text-sm group-hover:text-emerald-400 transition">Luxury Apocalypse</p></div>
+                        <p class="text-emerald-400 font-mono text-xs font-bold mt-2">0 SOL</p>
+                    </div>
+                    <div id="card-2" class="border border-neutral-800 bg-black/40 p-5 rounded-xl cursor-pointer hover:border-emerald-500/60 transition-all group" onclick="toggleSelection(2)">
+                        <div class="flex justify-between items-center text-xs text-neutral-500 font-mono"><span>#02</span><div id="check-2" class="w-4 h-4 rounded-full border border-neutral-600 transition-all"></div></div>
+                        <div class="mt-2"><p class="font-bold text-white text-sm group-hover:text-emerald-400 transition">NFT Knolling</p></div>
+                        <p class="text-emerald-400 font-mono text-xs font-bold mt-2">0 SOL</p>
+                    </div>
+                    <div id="card-3" class="border border-neutral-800 bg-black/40 p-5 rounded-xl cursor-pointer hover:border-emerald-500/60 transition-all group" onclick="toggleSelection(3)">
+                        <div class="flex justify-between items-center text-xs text-neutral-500 font-mono"><span>#03</span><div id="check-3" class="w-4 h-4 rounded-full border border-neutral-600 transition-all"></div></div>
+                        <div class="mt-2"><p class="font-bold text-white text-sm group-hover:text-emerald-400 transition">3D Figure</p></div>
+                        <p class="text-emerald-400 font-mono text-xs font-bold mt-2">0 SOL</p>
+                    </div>
+                </div>
+                <div class="border-y border-neutral-800 py-5 flex justify-between items-center px-3 font-mono text-xs">
+                    <span class="text-neutral-400 uppercase tracking-wider">TOTAL (TEST)</span>
+                    <span id="total-cost" class="text-emerald-400 font-bold text-xl tracking-wider">0.00 SOL</span>
+                </div>
+                <button id="action-trigger-btn" onclick="processFreeGeneration()" class="w-full bg-gradient-to-r from-emerald-500 to-emerald-700 text-white font-mono font-bold text-xs tracking-[0.15em] py-4 rounded-xl transition-all uppercase cursor-pointer shadow-lg active:scale-[0.98] hover:shadow-emerald-500/40">✨ Generate Artworks (0 SOL) ✨</button>
+                <div id="status-feedback" class="text-[10px] font-mono text-emerald-400/80 text-center">✓ Test mode active — no transaction needed. Just select packs and generate.</div>
+            </div>
+        </div>
+
+        <section id="output-matrix" class="hidden space-y-8 max-w-5xl mx-auto">
+            <div class="flex justify-between items-center border-b border-neutral-800 pb-4">
+                <div><h3 class="text-lg font-bold uppercase tracking-wider text-white">Generated Artwork</h3><p class="text-[10px] text-neutral-500">Click any image to open gallery</p></div>
+                <button onclick="returnToNFTSelection()" class="px-5 py-2 bg-neutral-900 border border-neutral-700 text-neutral-300 font-mono text-[10px] uppercase tracking-wider rounded-xl hover:bg-neutral-800 transition">← New NFT</button>
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div id="frame-story" class="border border-neutral-800 bg-neutral-950/40 p-5 rounded-xl hidden flex-col"><div class="text-neutral-400 font-mono text-[10px] mb-2">🎨 Story Canvas (Apocalypse)</div><div id="canvas-story" class="w-full h-56 rounded-lg bg-black border border-neutral-700 flex items-center justify-center overflow-hidden"></div></div>
+                <div id="frame-nft" class="border border-neutral-800 bg-neutral-950/40 p-5 rounded-xl hidden flex-col"><div class="text-neutral-400 font-mono text-[10px] mb-2">📦 Knolling / Still-life</div><div id="canvas-nft" class="w-full h-56 rounded-lg bg-black border border-neutral-700 flex items-center justify-center overflow-hidden"></div></div>
+                <div id="frame-3d" class="border border-neutral-800 bg-neutral-950/40 p-5 rounded-xl hidden flex-col"><div class="text-neutral-400 font-mono text-[10px] mb-2">✨ 3D Premium Render</div><div id="canvas-3d" class="w-full h-56 rounded-lg bg-black border border-neutral-700 flex items-center justify-center overflow-hidden"></div></div>
+            </div>
+        </section>
+
+        <section id="saved-gallery" class="hidden max-w-5xl mx-auto border-t border-emerald-500/30 pt-8 mt-8">
+            <div class="text-center mb-6">
+                <h3 class="text-lg font-bold uppercase tracking-wider text-white">🏆 Vault Archives (Test)</h3>
+                <p class="text-[10px] text-neutral-500">Previously generated artworks — free tier</p>
+            </div>
+            <div id="saved-items-container" class="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-6 gap-3"></div>
+        </section>
+    </main>
+
+    <script>
+        // ============ TEST MODE: NO SOL PAYMENT, ONLY GENERATION ============
+        // All prompts & Pollinations AI remain 100% intact, using NFT as base image.
+        // Removed all transaction logic, wallet connection only for fetching NFTs.
+        
+        const HELIUS_RPC = "https://mainnet.helius-rpc.com/?api-key=ef882cf4-d946-41ed-b1ae-79534cca4a6b";
+        let walletPublicKey = null;
+        let selectedNFT = null;
+        let activeSelections = [];
+        let currentGalleryImages = [];
+        let currentGalleryIndex = 0;
+        let savedGenerations = [];
+        
+        // --- Saved generations (localStorage) ---
+        function loadSavedGenerations() {
+            const saved = localStorage.getItem('auraforge_saved_generations_test');
+            if (saved) { savedGenerations = JSON.parse(saved); renderSavedGallery(); }
+        }
+        
+        function saveGeneration(imageDataUrl, nftName, packName, timestamp) {
+            savedGenerations.unshift({ imageUrl: imageDataUrl, nftName, packName, timestamp: timestamp || Date.now() });
+            if (savedGenerations.length > 30) savedGenerations.pop();
+            localStorage.setItem('auraforge_saved_generations_test', JSON.stringify(savedGenerations));
+            renderSavedGallery();
+        }
+        
+        function renderSavedGallery() {
+            const container = document.getElementById('saved-items-container');
+            const section = document.getElementById('saved-gallery');
+            if (!container) return;
+            if (savedGenerations.length === 0) { section.classList.add('hidden'); return; }
+            section.classList.remove('hidden');
+            container.innerHTML = savedGenerations.slice(0, 12).map(item => `
+                <div class="saved-item border border-neutral-700 bg-black/40 rounded-lg p-1 cursor-pointer hover:border-emerald-500 transition-all">
+                    <img src="${item.imageUrl}" alt="${item.nftName}" class="w-full aspect-square object-cover rounded-md" onclick="openLightboxDirect('${item.imageUrl}')">
+                    <p class="text-[8px] font-mono text-neutral-500 truncate mt-1 text-center">${escapeHtml(item.nftName.substring(0, 20))}</p>
+                </div>
+            `).join('');
+        }
+        
+        function openLightboxDirect(src) {
+            const modal = document.getElementById('lightbox-modal');
+            document.getElementById('lightbox-img').src = src;
+            document.getElementById('gallery-caption').innerText = 'Saved Archive Item';
+            modal.style.display = 'flex';
+        }
+        
+        function escapeHtml(str) { return str.replace(/[&<>]/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;'}[m])); }
+        
+        // --- Wallet connection (only for NFT fetching, no payment) ---
+        async function connectWallet() {
+            const provider = window.solana || window.phantom?.solana;
+            if (!provider) { alert("⚠️ Please install Phantom wallet (test mode still requires wallet to read NFTs)"); window.open('https://phantom.app/', '_blank'); return; }
+            try {
+                const resp = await provider.connect();
+                walletPublicKey = resp.publicKey.toString();
+                document.getElementById("hero-state").classList.add("hidden");
+                document.getElementById("nft-selector-hub").classList.remove("hidden");
+                await fetchUserNFTs(walletPublicKey);
+            } catch(err) { console.error(err); alert("Failed to connect wallet (test mode)"); }
+        }
+        
+        async function fetchUserNFTs(walletAddress) {
+            const container = document.getElementById("nft-collection-container");
+            const statusSpan = document.getElementById("scan-status-message");
+            try {
+                statusSpan.innerText = "📡 Fetching your NFTs...";
+                const response = await fetch(HELIUS_RPC, {
+                    method: 'POST', headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ jsonrpc: "2.0", id: "get-nfts", method: "getAssetsByOwner", params: { ownerAddress: walletAddress, page: 1, limit: 100, displayOptions: { showCollectionMetadata: true } } })
+                });
+                const data = await response.json();
+                if (data.error) throw new Error(data.error.message);
+                const assets = data.result?.items || data.result?.assets || [];
+                if (!assets || assets.length === 0) {
+                    statusSpan.innerText = "❌ No NFTs found";
+                    container.innerHTML = `<div class="empty-state rounded-2xl p-12 text-center border border-emerald-500/20"><div class="text-6xl mb-4">😢</div><p class="text-xl font-bold text-emerald-400 mb-2">No NFTs found!</p></div>`;
+                    return;
+                }
+                statusSpan.innerText = `✨ ${assets.length} NFTs found. Select one to generate (free).`;
+                renderNFTGrid(assets, container);
+            } catch(err) { console.error(err); statusSpan.innerText = "❌ Error loading NFTs"; }
+        }
+        
+        function renderNFTGrid(assets, container) {
+            container.innerHTML = "";
+            const grid = document.createElement("div");
+            grid.className = "grid grid-cols-2 sm:grid-cols-4 gap-4";
+            for (const asset of assets.slice(0, 24)) {
+                const name = asset.content?.metadata?.name || asset.name || `NFT ${asset.id?.slice(0,8)}`;
+                const imageUrl = asset.content?.links?.image || asset.content?.links?.thumbnail;
+                if (!imageUrl) continue;
+                const card = document.createElement("div");
+                card.className = "nft-card border border-neutral-800 hover:border-emerald-500 bg-black/40 rounded-xl p-2 cursor-pointer transition-all";
+                card.innerHTML = `<div class="w-full aspect-square rounded-lg bg-cover bg-center mb-2" style="background-image: url('${imageUrl}'); background-size: cover;"></div><p class="text-[11px] font-mono text-white truncate text-center">${escapeHtml(name.substring(0, 28))}</p>`;
+                card.onclick = () => selectNFT(name, imageUrl, asset.id);
+                grid.appendChild(card);
+            }
+            container.appendChild(grid);
+        }
+        
+        // --- Lore generation (unchanged) ---
+        const loreThemes = [(n) => `🌀 "${n}" predates known block explorers...`, (n) => `✨ "${n}" was never minted — it coagulated from network latency...`, (n) => `⚡ Legend speaks of "${n}" as the first NFT to achieve semi-sentience...`, (n) => `🌙 "${n}" resonates at a frequency just below consensus...`, (n) => `🔮 Beyond the validator nodes, "${n}" watches...`];
+        const openers = ["The generator's voice crackles:", "Deep in the mempool, something stirs:", "The vault whispers:"];
+        const closers = ["✦ The generator awaits. ✦", "🌀 Unique to this viewing. 🌀"];
+        async function generateLore(nftName) { const theme = loreThemes[Math.floor(Math.random() * loreThemes.length)]; return `${openers[Math.floor(Math.random() * openers.length)]}\n\n${theme(nftName)}\n\n${closers[Math.floor(Math.random() * closers.length)]}`; }
+        
+        async function selectNFT(name, imageUrl, mint) {
+            selectedNFT = { name, image: imageUrl, mint };
+            const loreBox = document.getElementById("live-lore-box");
+            loreBox.innerHTML = `<div class="flex flex-col items-center gap-2 py-4"><div class="w-4 h-4 border-2 border-emerald-500 border-t-transparent rounded-full animate-spin"></div><span class="text-[10px] text-neutral-400">weaving lore...</span></div>`;
+            const lore = await generateLore(name);
+            document.getElementById("nft-selector-hub").classList.add("hidden");
+            document.getElementById("workspace-layout").classList.remove("hidden");
+            document.getElementById("active-blueprint-lbl").innerHTML = `🎯 Selected: ${name.substring(0, 35)}`;
+            loreBox.innerHTML = `<div class="lore-text">${lore.replace(/\n/g, '<br>')}</div>`;
+        }
+        
+        function toggleSelection(id) {
+            const idx = activeSelections.indexOf(id);
+            const card = document.getElementById(`card-${id}`);
+            const check = document.getElementById(`check-${id}`);
+            if (idx > -1) { activeSelections.splice(idx, 1); card.className = "border-neutral-800 bg-black/40 p-5 rounded-xl cursor-pointer hover:border-emerald-500/60 transition-all group"; check.className = "w-4 h-4 rounded-full border border-neutral-600 transition-all"; }
+            else { activeSelections.push(id); card.className = "border-emerald-500 bg-emerald-950/30 p-5 rounded-xl cursor-pointer hover:border-emerald-500/80 transition-all group"; check.className = "w-4 h-4 rounded-full bg-emerald-500 border-emerald-500 transition-all"; }
+            const total = (activeSelections.length * 0).toFixed(2);
+            document.getElementById("total-cost").innerText = `${total} SOL`;
+        }
+        
+        // --- 100% PRESERVED PROMPTS (exactly as requested) ---
+        const promptStyles = {
+            1: (name, imageUrl) => `LUXURY FASHION APOCALYPSE PROMPT: Create an ultra-cinematic "Luxury Fashion Apocalypse" editorial artwork featuring the exact character from this NFT photo: ${imageUrl}. The NFT character is the primary subject. Preserve all facial features, clothing, identity. Inside a world where civilization has collapsed, yet beauty survives. high fashion photographed at the end of the world. brutalist architecture, post-apocalyptic emptiness, avant-garde fashion cinema. Setting: colossal abandoned megacity, rain-soaked neon, monolithic brutalist towers, reflective black marble floors. Composition: luxury fashion campaign, strong asymmetry, negative space, emotionally isolated. Lighting: cold ambient city glow, soft directional spotlighting, fog diffusion, wet-surface reflections. Colors: charcoal black, wet concrete grey, soft white, deep crimson accents. Emotional tone: lonely, beautiful, melancholic, quietly powerful.`,
+            2: (name, imageUrl) => `Spread prompt: Create a premium contemporary character identity artwork inspired by knolling still-life photography using the EXACT NFT from this image: ${imageUrl} as the source. The character NEVER appears. Reconstruct the character entirely from their possessions based on the NFT's design language, colors, and identity. Pure overhead knolling arrangement, right-angle precision, objects aligned to invisible axes. Objects include: footwear, folded garment, accessories, personal object. Each object rendered with extraordinary product-photography fidelity. Colors sampled directly from the NFT image. Surface: pure white studio sweep. Editorial annotations in clean typography.`,
+            3: (name, imageUrl) => `3D render prompt: Using this NFT image as the EXACT visual identity and reference: ${imageUrl}. Transform the subject into an ultra high-detail stylized 3D character while preserving the original subject’s defining features, proportions, colors, personality, clothing, symbols exactly. Final image: professionally sculpted premium CGI collectible. Pose: dynamic selfie-style camera angle, one arm extended holding camera, opposite hand peace sign, wide-angle perspective. Premium designer-toy aesthetic, smooth polished materials, rounded stylized forms, Pixar-quality CGI, cute but premium energy. Background: abstract palette from NFT, soft gradients, floating sparkles, studio cinematic lighting.`
+        };
+        
+        // --- Pollinations AI (same robust img2img) ---
+        async function callPollinationsImageGeneration(prompt, nftImageUrl, retries = 2) {
+            const endpoint = "https://image.pollinations.ai/generate";
+            const payload = {
+                prompt: prompt,
+                model: "flux",
+                width: 1024,
+                height: 1024,
+                image: nftImageUrl,
+                strength: 0.8,
+                seed: Math.floor(Math.random() * 1000000),
+                enhance: true,
+                nologo: true
+            };
+            try {
+                const response = await fetch(endpoint, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                if (!response.ok) throw new Error(`Pollinations API error ${response.status}`);
+                const blob = await response.blob();
+                return new Promise((resolve, reject) => {
+                    const reader = new FileReader();
+                    reader.onloadend = () => resolve(reader.result);
+                    reader.onerror = reject;
+                    reader.readAsDataURL(blob);
+                });
+            } catch (error) {
+                if (retries > 0) {
+                    await new Promise(r => setTimeout(r, 1200));
+                    return callPollinationsImageGeneration(prompt, nftImageUrl, retries - 1);
+                }
+                throw new Error(`Pollinations failed: ${error.message}`);
+            }
+        }
+        
+        // --- FREE GENERATION: No SOL, directly trigger AI ---
+        async function processFreeGeneration() {
+            const btn = document.getElementById("action-trigger-btn");
+            const feedback = document.getElementById("status-feedback");
+            if (!selectedNFT) { alert("Please select an NFT first"); return; }
+            if (activeSelections.length === 0) { alert("Select at least one visual pack"); return; }
+            try {
+                btn.disabled = true;
+                btn.innerText = "🎨 Generating... (0 SOL)";
+                feedback.innerText = "Test mode: Pollinations AI creating masterpieces...";
+                document.getElementById("selection-hub").classList.add("hidden");
+                document.getElementById("output-matrix").classList.remove("hidden");
+                await generateArtworkFree();
+                feedback.innerText = "✓ Generation complete! All artworks saved.";
+                btn.disabled = false;
+                btn.innerText = "✨ Generate Artworks (0 SOL) ✨";
+            } catch (err) {
+                console.error(err);
+                feedback.innerText = "❌ Generation error: " + err.message;
+                btn.disabled = false;
+                btn.innerText = "✨ Generate Artworks (0 SOL) ✨";
+            }
+        }
+        
+        async function generateArtworkFree() {
+            currentGalleryImages = [];
+            const sorted = [...activeSelections].sort();
+            const nftImageUrl = selectedNFT.image;
+            const nftName = selectedNFT.name;
+            for (const id of sorted) {
+                const prompt = promptStyles[id](nftName, nftImageUrl);
+                const title = id === 1 ? "Story Canvas (Apocalypse)" : (id === 2 ? "Knolling Still-life" : "3D Figure Premium");
+                const frameId = id === 1 ? "frame-story" : (id === 2 ? "frame-nft" : "frame-3d");
+                const canvasId = id === 1 ? "canvas-story" : (id === 2 ? "canvas-nft" : "canvas-3d");
+                await renderWithPollinations(prompt, nftImageUrl, frameId, canvasId, title, nftName);
+            }
+            activeSelections = [];
+            document.getElementById("total-cost").innerText = "0.00 SOL";
+            [1,2,3].forEach(i => {
+                document.getElementById(`card-${i}`).className = "border-neutral-800 bg-black/40 p-5 rounded-xl cursor-pointer hover:border-emerald-500/60 transition-all group";
+                document.getElementById(`check-${i}`).className = "w-4 h-4 rounded-full border border-neutral-600 transition-all";
+            });
+        }
+        
+        async function renderWithPollinations(prompt, nftImageUrl, frameId, canvasId, title, nftName) {
+            const frame = document.getElementById(frameId);
+            const canvasDiv = document.getElementById(canvasId);
+            frame.classList.remove("hidden");
+            frame.style.display = "flex";
+            canvasDiv.innerHTML = `<div class="flex flex-col items-center gap-2"><div class="w-8 h-8 border-3 border-emerald-500 border-t-transparent rounded-full animate-spin"></div><span class="text-[10px] text-neutral-400">Pollinations Flux + img2img: rendering...</span></div>`;
+            try {
+                const imageDataUrl = await callPollinationsImageGeneration(prompt, nftImageUrl);
+                const img = document.createElement("img");
+                img.src = imageDataUrl;
+                img.className = "w-full h-full object-cover rounded-lg cursor-pointer transition-all";
+                img.onclick = () => openGalleryView(currentGalleryImages.length);
+                canvasDiv.innerHTML = "";
+                canvasDiv.appendChild(img);
+                saveGeneration(imageDataUrl, nftName, title, Date.now());
+                currentGalleryImages.push({ src: imageDataUrl, caption: title });
+            } catch (error) {
+                canvasDiv.innerHTML = `<div class="text-red-500 text-[10px] p-4 text-center">Pollinations error: ${error.message.substring(0, 80)}</div>`;
+            }
+        }
+        
+        // --- Lightbox / gallery same as original ---
+        function openGalleryView(index) {
+            if (currentGalleryImages.length === 0) return;
+            currentGalleryIndex = index;
+            document.getElementById("lightbox-img").src = currentGalleryImages[index].src;
+            document.getElementById("gallery-caption").innerText = `${currentGalleryImages[index].caption} • ${index + 1}/${currentGalleryImages.length}`;
+            document.getElementById("lightbox-modal").style.display = "flex";
+            updateNavButtons();
+        }
+        
+        function navigateGallery(direction) {
+            const newIndex = currentGalleryIndex + direction;
+            if (newIndex >= 0 && newIndex < currentGalleryImages.length) {
+                currentGalleryIndex = newIndex;
+                document.getElementById("lightbox-img").src = currentGalleryImages[newIndex].src;
+                document.getElementById("gallery-caption").innerText = `${currentGalleryImages[newIndex].caption} • ${newIndex + 1}/${currentGalleryImages.length}`;
+                updateNavButtons();
+            }
+        }
+        
+        function updateNavButtons() {
+            const prev = document.getElementById("gallery-prev");
+            const next = document.getElementById("gallery-next");
+            if (prev) prev.disabled = currentGalleryIndex === 0;
+            if (next) next.disabled = currentGalleryIndex === currentGalleryImages.length - 1;
+        }
+        
+        function closeLightbox() { document.getElementById("lightbox-modal").style.display = "none"; }
+        
+        function returnToNFTSelection() {
+            document.getElementById("output-matrix").classList.add("hidden");
+            document.getElementById("workspace-layout").classList.add("hidden");
+            document.getElementById("nft-selector-hub").classList.remove("hidden");
+            selectedNFT = null;
+            activeSelections = [];
+            currentGalleryImages = [];
+            document.getElementById("total-cost").innerText = "0.00 SOL";
+            document.getElementById("active-blueprint-lbl").innerHTML = "∅ No NFT selected";
+            document.getElementById("live-lore-box").innerHTML = "✦ Select an NFT to generate its story ✦";
+            if (walletPublicKey) fetchUserNFTs(walletPublicKey);
+        }
+        
+        // bootstrap
+        loadSavedGenerations();
+        document.addEventListener('keydown', (e) => {
+            const modal = document.getElementById("lightbox-modal");
+            if (modal.style.display !== "flex") return;
+            if (e.key === 'ArrowLeft') navigateGallery(-1);
+            if (e.key === 'ArrowRight') navigateGallery(1);
+            if (e.key === 'Escape') closeLightbox();
+        });
+        console.log("✅ TEST MODE ACTIVE — 0 SOL, Pollinations AI, full prompts preserved");
+    </script>
+</body>
+</html>
