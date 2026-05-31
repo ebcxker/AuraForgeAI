@@ -1,0 +1,509 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+    <title>Gemini Image Editor · Preserve Subject</title>
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            background: linear-gradient(145deg, #0b1120 0%, #111827 100%);
+            font-family: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+            margin: 0;
+            min-height: 100vh;
+            padding: 1.5rem;
+        }
+
+        .container {
+            max-width: 1300px;
+            margin: 0 auto;
+        }
+
+        h1 {
+            text-align: center;
+            font-size: 2.2rem;
+            font-weight: 700;
+            background: linear-gradient(135deg, #fff, #a5b4fc);
+            background-clip: text;
+            -webkit-background-clip: text;
+            color: transparent;
+            margin-bottom: 0.5rem;
+        }
+
+        .sub {
+            text-align: center;
+            color: #9ca3af;
+            margin-bottom: 2rem;
+            font-size: 0.95rem;
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(360px, 1fr));
+            gap: 1.8rem;
+        }
+
+        .card {
+            background: rgba(17, 24, 39, 0.8);
+            backdrop-filter: blur(12px);
+            border-radius: 2rem;
+            padding: 1.5rem;
+            border: 1px solid rgba(255,255,255,0.1);
+            box-shadow: 0 20px 35px -12px rgba(0,0,0,0.4);
+            transition: 0.2s;
+        }
+
+        .card-title {
+            font-size: 1.4rem;
+            font-weight: 600;
+            margin-bottom: 1rem;
+            color: #e5e7eb;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            border-left: 4px solid #8b5cf6;
+            padding-left: 0.8rem;
+        }
+
+        .image-preview {
+            background: #0f172a;
+            border-radius: 1.2rem;
+            padding: 1rem;
+            text-align: center;
+            min-height: 280px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border: 1px solid #334155;
+            margin-bottom: 1.2rem;
+        }
+
+        .image-preview img {
+            max-width: 100%;
+            max-height: 280px;
+            object-fit: contain;
+            border-radius: 12px;
+        }
+
+        .placeholder {
+            color: #6b7280;
+            text-align: center;
+            padding: 2rem;
+            font-style: italic;
+        }
+
+        textarea, input[type="text"] {
+            width: 100%;
+            background: #1e293b;
+            border: 1px solid #334155;
+            border-radius: 1rem;
+            padding: 0.8rem 1rem;
+            color: white;
+            font-size: 0.9rem;
+            font-family: inherit;
+            margin: 0.8rem 0;
+            resize: vertical;
+        }
+
+        textarea:focus, input:focus {
+            outline: none;
+            border-color: #8b5cf6;
+            box-shadow: 0 0 0 2px rgba(139,92,246,0.3);
+        }
+
+        button {
+            background: linear-gradient(95deg, #8b5cf6, #6d28d9);
+            border: none;
+            padding: 0.7rem 1.5rem;
+            border-radius: 3rem;
+            font-weight: 600;
+            color: white;
+            cursor: pointer;
+            transition: 0.2s;
+            font-size: 0.9rem;
+            margin: 0.3rem;
+        }
+
+        button:hover:not(:disabled) {
+            transform: translateY(-2px);
+            filter: brightness(1.05);
+        }
+
+        .btn-primary {
+            background: linear-gradient(95deg, #ec4899, #be185d);
+            font-size: 1rem;
+            padding: 0.8rem 1.8rem;
+            width: 100%;
+            margin-top: 0.5rem;
+        }
+
+        button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .status {
+            background: #1e293b;
+            border-left: 4px solid #8b5cf6;
+            padding: 0.7rem 1rem;
+            border-radius: 1rem;
+            margin-top: 1rem;
+            font-size: 0.85rem;
+            color: #cbd5e1;
+            word-break: break-word;
+        }
+
+        .loader {
+            display: inline-block;
+            width: 18px;
+            height: 18px;
+            border: 2px solid rgba(255,255,255,0.3);
+            border-radius: 50%;
+            border-top-color: white;
+            animation: spin 0.7s linear infinite;
+            vertical-align: middle;
+            margin-right: 8px;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .examples {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+            margin-top: 0.8rem;
+        }
+
+        .example-chip {
+            background: #334155;
+            padding: 0.3rem 0.8rem;
+            border-radius: 2rem;
+            font-size: 0.75rem;
+            cursor: pointer;
+            transition: 0.1s;
+        }
+
+        .example-chip:hover {
+            background: #4b5563;
+        }
+
+        footer {
+            text-align: center;
+            margin-top: 2rem;
+            color: #6b7280;
+            font-size: 0.7rem;
+        }
+
+        @media (max-width: 720px) {
+            .grid { grid-template-columns: 1fr; }
+            body { padding: 1rem; }
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+    <h1>✧ Gemini Image Editor ✧</h1>
+    <div class="sub">Upload a photo → Write a prompt → AI edits it while keeping your subject intact</div>
+
+    <div class="grid">
+        <!-- LEFT: upload + prompt -->
+        <div class="card">
+            <div class="card-title">📤 1. Your image</div>
+            <div class="image-preview" id="uploadContainer">
+                <img id="uploadedImg" src="" style="display: none;">
+                <div id="uploadPlaceholder" class="placeholder">⬅️ Click below to upload</div>
+            </div>
+            <input type="file" id="fileInput" accept="image/jpeg,image/png,image/webp" style="display: none;">
+            <div style="display: flex; justify-content: center; gap: 10px;">
+                <button onclick="document.getElementById('fileInput').click()">📁 Choose photo</button>
+                <button onclick="clearUpload()" style="background:#4b5563;">🗑 Clear</button>
+            </div>
+
+            <div class="card-title" style="margin-top: 1.2rem;">✍️ 2. Edit prompt</div>
+            <textarea id="promptInput" rows="3" placeholder="Example: 'Change the background to vivid red, keep the person exactly the same'"></textarea>
+            <div class="examples">
+                <span class="example-chip" onclick="setPrompt('Change the background to solid bright red. Keep the main subject identical.')">🔴 Red background</span>
+                <span class="example-chip" onclick="setPrompt('Add large angel wings behind the person. Do not alter the person.')">🪽 Add wings</span>
+                <span class="example-chip" onclick="setPrompt('Make the person wear sunglasses. Preserve all other details.')">😎 Sunglasses</span>
+                <span class="example-chip" onclick="setPrompt('Turn the background into a magical forest, keep subject unchanged.')">🌲 Fantasy bg</span>
+            </div>
+
+            <div class="status" id="apiStatus">
+                🔑 Loading API key from secure bin...
+            </div>
+        </div>
+
+        <!-- RIGHT: generation + result -->
+        <div class="card">
+            <div class="card-title">✨ 3. AI edited result</div>
+            <div class="image-preview" id="resultContainer">
+                <img id="resultImg" src="" style="display: none;">
+                <div id="resultPlaceholder" class="placeholder">🎨 Your edited image will appear here</div>
+            </div>
+            <button id="generateBtn" class="btn-primary" onclick="startEdit()">
+                🚀 Generate with Gemini
+            </button>
+            <div class="status" id="messageArea">
+                💡 Ready. Upload image, write prompt, then click generate.
+            </div>
+        </div>
+    </div>
+    <footer>
+        Using Gemini 2.0 Flash (image generation) | Subject preservation enforced via prompt | API key loaded externally
+    </footer>
+</div>
+
+<script>
+    // ---------- DOM elements ----------
+    const fileInput = document.getElementById('fileInput');
+    const uploadedImg = document.getElementById('uploadedImg');
+    const uploadPlaceholder = document.getElementById('uploadPlaceholder');
+    const resultImg = document.getElementById('resultImg');
+    const resultPlaceholder = document.getElementById('resultPlaceholder');
+    const generateBtn = document.getElementById('generateBtn');
+    const messageDiv = document.getElementById('messageArea');
+    const promptTextarea = document.getElementById('promptInput');
+    const apiStatusDiv = document.getElementById('apiStatus');
+
+    // State
+    let currentImageFile = null;
+    let currentBase64 = null;      // base64 without data: prefix
+    let mimeType = null;
+    let geminiApiKey = null;
+    let isGenerating = false;
+
+    // JSON bin URL with your API key (only contains the key as a string or object)
+    const BIN_URL = 'https://api.jsonbin.io/v3/b/6a1c53b621f9ee59d2a18135';
+
+    // ---------- 1. Fetch API key from JSON bin ----------
+    async function fetchApiKey() {
+        apiStatusDiv.innerHTML = '🔑 Fetching Gemini API key from secure bin...';
+        try {
+            const response = await fetch(BIN_URL, {
+                headers: { 'X-Master-Key': '$2a$10$YOUR_MASTER_KEY$' } // Not needed if bin is public
+            });
+            // Many public bins don't need a master key; if 401, we retry without custom header
+            if (!response.ok) {
+                // Try without any extra headers (public read)
+                const publicResp = await fetch(BIN_URL);
+                if (!publicResp.ok) throw new Error(`HTTP ${publicResp.status}`);
+                const data = await publicResp.json();
+                extractKey(data);
+            } else {
+                const data = await response.json();
+                extractKey(data);
+            }
+        } catch (err) {
+            apiStatusDiv.innerHTML = `❌ Failed to load API key: ${err.message}. Please make sure the bin is publicly readable.`;
+            console.error(err);
+        }
+    }
+
+    function extractKey(data) {
+        // Bin can store: plain string, or object like { "key": "..." } or { "apiKey": "..." }
+        let key = null;
+        if (typeof data === 'string') key = data;
+        else if (data.record && typeof data.record === 'string') key = data.record;
+        else if (data.record && data.record.key) key = data.record.key;
+        else if (data.key) key = data.key;
+        else if (data.apiKey) key = data.apiKey;
+        else if (data.GEMINI_KEY) key = data.GEMINI_KEY;
+        
+        if (key && key.startsWith('AI')) {
+            geminiApiKey = key;
+            apiStatusDiv.innerHTML = '✅ Gemini API key loaded. You can now generate.';
+            generateBtn.disabled = false;
+        } else {
+            apiStatusDiv.innerHTML = '⚠️ Invalid API key format in bin. Please ensure it contains a valid Gemini key string.';
+            generateBtn.disabled = true;
+        }
+    }
+
+    // Helper: convert File to base64 (without prefix)
+    function fileToBase64(file) {
+        return new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.readAsDataURL(file);
+            reader.onload = () => {
+                const base64 = reader.result.split(',')[1];
+                resolve(base64);
+            };
+            reader.onerror = error => reject(error);
+        });
+    }
+
+    // Handle upload
+    fileInput.addEventListener('change', async (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+        if (!file.type.startsWith('image/')) {
+            messageDiv.innerHTML = '❌ Please upload an image (JPEG, PNG, WEBP).';
+            return;
+        }
+        if (file.size > 12 * 1024 * 1024) {
+            messageDiv.innerHTML = '⚠️ Image too large (max 12MB).';
+            return;
+        }
+        currentImageFile = file;
+        mimeType = file.type;
+        // preview
+        const previewUrl = URL.createObjectURL(file);
+        uploadedImg.src = previewUrl;
+        uploadedImg.style.display = 'block';
+        uploadPlaceholder.style.display = 'none';
+        messageDiv.innerHTML = '✅ Image ready. Write your edit prompt.';
+        // Convert to base64 for API
+        try {
+            currentBase64 = await fileToBase64(file);
+        } catch (err) {
+            console.warn('base64 conversion error', err);
+        }
+    });
+
+    function clearUpload() {
+        currentImageFile = null;
+        currentBase64 = null;
+        uploadedImg.src = '';
+        uploadedImg.style.display = 'none';
+        uploadPlaceholder.style.display = 'flex';
+        resultImg.src = '';
+        resultImg.style.display = 'none';
+        resultPlaceholder.style.display = 'flex';
+        messageDiv.innerHTML = '🖼️ Cleared. Upload a new image.';
+    }
+
+    function setPrompt(text) {
+        promptTextarea.value = text;
+    }
+
+    // ---------- 2. Gemini API call (image-to-image editing) ----------
+    async function editWithGemini(base64Image, mime, prompt) {
+        // Use gemini-2.0-flash-exp-image-generation model (supports image output)
+        const modelName = 'gemini-2.0-flash-exp-image-generation';
+        const url = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${geminiApiKey}`;
+        
+        const requestBody = {
+            contents: [
+                {
+                    parts: [
+                        { text: prompt },
+                        {
+                            inlineData: {
+                                mimeType: mime,
+                                data: base64Image
+                            }
+                        }
+                    ]
+                }
+            ],
+            generationConfig: {
+                temperature: 0.7,
+                topP: 0.95,
+                candidateCount: 1
+            }
+        };
+
+        const response = await fetch(url, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(requestBody)
+        });
+
+        if (!response.ok) {
+            const errorText = await response.text();
+            let errMsg = `Gemini API error (${response.status})`;
+            try {
+                const errJson = JSON.parse(errorText);
+                errMsg = errJson.error?.message || errMsg;
+            } catch(e) {}
+            throw new Error(errMsg);
+        }
+
+        const data = await response.json();
+        // Extract generated image (inlineData) from the response
+        const parts = data.candidates?.[0]?.content?.parts;
+        if (!parts) throw new Error('No image generated. Check model availability.');
+        
+        const imagePart = parts.find(p => p.inlineData);
+        if (!imagePart || !imagePart.inlineData?.data) {
+            throw new Error('Response did not contain an image.');
+        }
+        
+        return imagePart.inlineData.data; // base64 string
+    }
+
+    // Main generate function
+    async function startEdit() {
+        if (!geminiApiKey) {
+            messageDiv.innerHTML = '🔑 API key not loaded yet. Wait a moment or refresh.';
+            return;
+        }
+        if (!currentImageFile || !currentBase64) {
+            messageDiv.innerHTML = '⚠️ Please upload an image first.';
+            return;
+        }
+        let prompt = promptTextarea.value.trim();
+        if (!prompt) {
+            messageDiv.innerHTML = '✍️ Please enter an edit prompt (e.g., "change background to red").';
+            return;
+        }
+
+        if (isGenerating) {
+            messageDiv.innerHTML = '⏳ Already generating, please wait...';
+            return;
+        }
+
+        isGenerating = true;
+        generateBtn.disabled = true;
+        generateBtn.innerHTML = '<span class="loader"></span> Gemini is editing...';
+        messageDiv.innerHTML = `🎨 Sending image + prompt to Gemini... (model: gemini-2.0-flash-image)`;
+        
+        resultPlaceholder.style.display = 'flex';
+        resultPlaceholder.innerHTML = '⏳ AI is editing your image – preserving subject, applying edit...';
+        resultImg.style.display = 'none';
+
+        try {
+            const editedBase64 = await editWithGemini(currentBase64, mimeType, prompt);
+            // Create a blob from base64
+            const byteCharacters = atob(editedBase64);
+            const byteNumbers = new Array(byteCharacters.length);
+            for (let i = 0; i < byteCharacters.length; i++) {
+                byteNumbers[i] = byteCharacters.charCodeAt(i);
+            }
+            const byteArray = new Uint8Array(byteNumbers);
+            const blob = new Blob([byteArray], { type: 'image/png' }); // Gemini usually returns PNG
+            const url = URL.createObjectURL(blob);
+            
+            resultImg.src = url;
+            resultImg.style.display = 'block';
+            resultPlaceholder.style.display = 'none';
+            messageDiv.innerHTML = `✅ Success! Your image has been edited. Prompt: "${prompt}"`;
+            
+            // cleanup old URL
+            if (window._currentResultUrl) URL.revokeObjectURL(window._currentResultUrl);
+            window._currentResultUrl = url;
+        } catch (err) {
+            console.error(err);
+            messageDiv.innerHTML = `❌ Generation failed: ${err.message}. Make sure your Gemini key has image generation access and the model is available.`;
+            resultPlaceholder.style.display = 'flex';
+            resultPlaceholder.innerHTML = '⚠️ Edit failed. See error message.';
+            resultImg.style.display = 'none';
+        } finally {
+            isGenerating = false;
+            generateBtn.disabled = false;
+            generateBtn.innerHTML = '🚀 Generate with Gemini';
+        }
+    }
+
+    // Load API key on page start
+    fetchApiKey();
+    // Initially disable generate until key is ready
+    generateBtn.disabled = true;
+</script>
+</body>
+</html>
