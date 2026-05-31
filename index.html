@@ -1,0 +1,470 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes, viewport-fit=cover">
+    <title>NFT Survivor — Pick Your Champion</title>
+    <!-- Tailwind + Font Awesome -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <!-- Solana Web3 + Phantom adapter -->
+    <script src="https://unpkg.com/@solana/web3.js@1.87.6/lib/index.iife.js"></script>
+    <style>
+        * { -webkit-tap-highlight-color: transparent; }
+        body { background: #0a0a0f; font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif; }
+        .glass-card { background: rgba(18, 18, 28, 0.95); backdrop-filter: blur(12px); border: 1px solid rgba(250, 204, 21, 0.3); border-radius: 28px; }
+        .nft-grid-item { transition: all 0.2s ease; cursor: pointer; }
+        .nft-grid-item.selected { border: 2px solid #facc15; box-shadow: 0 0 0 2px rgba(250,204,21,0.4); transform: scale(0.98); }
+        .badge-trait { background: rgba(250,204,21,0.15); border-radius: 40px; padding: 4px 12px; font-size: 0.7rem; font-weight: 500; }
+        .log-line { border-left: 3px solid #facc15; padding-left: 12px; margin-bottom: 10px; font-size: 0.75rem; }
+        button:active { transform: scale(0.97); transition: 0.05s; }
+        .stat-card { background: rgba(0,0,0,0.5); border-radius: 16px; padding: 8px 4px; text-align: center; }
+        .permission-badge { background: #1f3a2f; color: #4ade80; }
+    </style>
+</head>
+<body class="text-gray-200 pb-24">
+    <div class="max-w-lg mx-auto px-4 py-4 space-y-4">
+        <!-- HEADER -->
+        <div class="flex justify-between items-center gap-3">
+            <div class="flex items-center gap-2">
+                <i class="fas fa-skull text-2xl text-yellow-400"></i>
+                <h1 class="text-xl font-black bg-gradient-to-r from-yellow-300 to-orange-500 bg-clip-text text-transparent">NFT SURVIVOR</h1>
+            </div>
+            <div id="walletButtonContainer"></div>
+        </div>
+
+        <!-- PERMISSION & STATUS -->
+        <div class="glass-card px-4 py-2 flex justify-between items-center text-xs">
+            <div class="flex items-center gap-2">
+                <i class="fas fa-shield-alt text-yellow-500"></i>
+                <span id="walletPermStatus" class="text-gray-300">🔒 not connected</span>
+            </div>
+            <div id="gameStatusBadge" class="bg-black/50 px-2 py-1 rounded-full text-[10px]">⚡ waiting</div>
+        </div>
+
+        <!-- NFT GALLERY SECTION (Requires wallet + permission) -->
+        <div class="glass-card p-4 space-y-3">
+            <div class="flex justify-between items-center">
+                <h2 class="font-bold text-sm"><i class="fas fa-images mr-1 text-yellow-400"></i>Your NFT Collection</h2>
+                <span id="nftCountBadge" class="text-[10px] bg-black/50 px-2 py-0.5 rounded-full">—</span>
+            </div>
+            
+            <!-- scrollable grid of NFTs -->
+            <div id="nftGrid" class="grid grid-cols-3 gap-2 max-h-48 overflow-y-auto p-1">
+                <div class="col-span-3 text-center text-gray-500 text-xs py-4">Connect wallet & grant view permission to see NFTs</div>
+            </div>
+            
+            <!-- SELECTED NFT DETAILS + LORE -->
+            <div id="selectedNftPanel" class="hidden">
+                <div class="border-t border-yellow-500/30 pt-3 mt-1">
+                    <div class="flex gap-3 items-start">
+                        <div class="w-20 h-20 rounded-xl overflow-hidden bg-black/60 border border-yellow-500/50 flex-shrink-0">
+                            <img id="selectedNftImage" src="" class="w-full h-full object-cover">
+                        </div>
+                        <div class="flex-1">
+                            <h3 id="selectedNftName" class="font-bold text-base">—</h3>
+                            <div id="selectedTraits" class="flex flex-wrap gap-1 mt-1"></div>
+                        </div>
+                    </div>
+                    <div class="mt-3 bg-black/30 rounded-xl p-2">
+                        <div class="flex items-center gap-1 text-yellow-400 text-[10px]"><i class="fas fa-scroll"></i> LORE (scanned from NFT)</div>
+                        <p id="loreText" class="text-xs text-gray-300 italic mt-1 leading-relaxed">Select an NFT to generate survivor lore.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- RPG STATS (auto from NFT traits) -->
+        <div class="glass-card p-4">
+            <h3 class="font-bold text-sm mb-2 flex items-center gap-2"><i class="fas fa-dice-d6 text-yellow-400"></i> Survivor Stats</h3>
+            <div class="grid grid-cols-4 gap-2 text-center">
+                <div class="stat-card"><span class="block text-yellow-400 text-[10px]">⚔️ ATK</span><span id="statAtk" class="font-bold">0</span></div>
+                <div class="stat-card"><span class="block text-blue-400 text-[10px]">🛡️ DEF</span><span id="statDef" class="font-bold">0</span></div>
+                <div class="stat-card"><span class="block text-green-400 text-[10px]">🍀 LCK</span><span id="statLck" class="font-bold">0</span></div>
+                <div class="stat-card"><span class="block text-purple-400 text-[10px]">👑 LDR</span><span id="statLdr" class="font-bold">0</span></div>
+                <div class="stat-card col-span-2"><span class="block text-orange-300 text-[10px]">🥫 SUPPLIES</span><span id="statSup" class="font-bold">0</span></div>
+                <div class="stat-card"><span class="block text-red-400 text-[10px]">💀 KILLS</span><span id="statKill" class="font-bold">0</span></div>
+                <div class="stat-card"><span class="block text-rose-300 text-[10px]">🤝 ALLY</span><span id="statAlly" class="font-bold">0</span></div>
+            </div>
+        </div>
+
+        <!-- SURVIVAL CONTROLS (start game only after NFT selected) -->
+        <div class="flex gap-3">
+            <button id="startGameBtn" disabled class="flex-1 bg-yellow-600 hover:bg-yellow-500 disabled:opacity-40 disabled:scale-100 transition py-3 rounded-full font-bold flex items-center justify-center gap-2"><i class="fas fa-fist-raised"></i> Start Survival</button>
+            <button id="nextDayBtn" disabled class="flex-1 bg-gray-700 hover:bg-gray-600 disabled:opacity-40 py-3 rounded-full font-bold flex items-center justify-center gap-2"><i class="fas fa-calendar-day"></i> Next Day</button>
+        </div>
+        <div id="startHelperMsg" class="text-center text-[10px] text-gray-400">⚠️ Select an NFT from your collection, then press Start Survival</div>
+
+        <!-- SURVIVOR CHRONICLE -->
+        <div class="glass-card p-4">
+            <div class="flex justify-between items-center mb-2">
+                <h2 class="font-bold text-sm"><i class="fas fa-book-open mr-1"></i>Chronicle</h2>
+                <button id="clearLogBtn" class="text-[10px] text-gray-400 hover:text-yellow-300"><i class="fas fa-eraser"></i> clear</button>
+            </div>
+            <div id="logBox" class="h-56 overflow-y-auto pr-1 space-y-2 text-xs">
+                <div class="text-center text-gray-500 italic">🔐 Connect Phantom wallet, sign message to view NFTs, then choose your champion.</div>
+            </div>
+        </div>
+        <div class="text-center text-[10px] text-gray-500">✍️ Every transaction signed locally · No data saved · Each run unique</div>
+    </div>
+
+    <script>
+        // ------------------- GLOBALS -------------------
+        let walletPublicKey = null;
+        let walletConnected = false;
+        let userNfts = [];           // array of { mint, name, imageUrl, traits }
+        let selectedNft = null;      // currently selected NFT object
+        let gameActive = false;
+        let currentDay = 0;
+        let eliminated = false;
+        let maxDays = 30;
+        let allianceActive = null;
+        
+        let gameStats = { attack: 10, defense: 10, luck: 10, leadership: 10, supplies: 20, kills: 0, alliances: 0, betrayals: 0 };
+        
+        // API keys from provided jsonbin endpoints
+        let HELIUS_API_KEY = "";
+        let GEMINI_API_KEY = "";
+        
+        // ---------- FETCH API KEYS ----------
+        async function fetchApiKeys() {
+            try {
+                const heliusResp = await fetch("https://api.jsonbin.io/v3/b/6a1c618eddf5aa59f77c451e/latest");
+                const heliusData = await heliusResp.json();
+                HELIUS_API_KEY = heliusData.record?.key || heliusData.key || "";
+                const gemResp = await fetch("https://api.jsonbin.io/v3/b/6a1c59d3ddf5aa59f77c3034/latest");
+                const gemData = await gemResp.json();
+                GEMINI_API_KEY = gemData.record?.key || gemData.key || "";
+                console.log("Keys fetched", HELIUS_API_KEY ? "Helius OK" : "no helius", GEMINI_API_KEY ? "Gemini OK" : "no gemini");
+            } catch(e) { console.warn(e); }
+        }
+        
+        // ---------- FETCH NFTs from wallet using Helius (requires permission) ----------
+        async function fetchNFTsFromWallet(ownerAddress) {
+            if (!HELIUS_API_KEY) {
+                addLogMessage("Helius API missing - using demo NFTs", true);
+                return getDemoNfts();
+            }
+            const url = `https://mainnet.helius-rpc.com/?api-key=${HELIUS_API_KEY}`;
+            try {
+                const response = await fetch(url, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        jsonrpc: "2.0",
+                        id: "get-nfts",
+                        method: "getAssetsByOwner",
+                        params: { ownerAddress: ownerAddress, page: 1, limit: 40, displayOptions: { showCollectionMetadata: true, showFungible: false } }
+                    })
+                });
+                const data = await response.json();
+                const items = data.result?.items || [];
+                const nfts = items.filter(asset => asset.interface === "V1_NFT" || asset.interface === "ProgrammableNFT").map(asset => ({
+                    mint: asset.id,
+                    name: asset.content?.metadata?.name || "Unnamed Survivor",
+                    imageUrl: asset.content?.links?.image || "",
+                    traits: asset.content?.metadata?.attributes || []
+                }));
+                if (nfts.length === 0) return getDemoNfts();
+                return nfts;
+            } catch(e) {
+                console.error("Helius error", e);
+                addLogMessage("Failed to fetch NFTs, using demo collection", true);
+                return getDemoNfts();
+            }
+        }
+        
+        function getDemoNfts() {
+            return [
+                { mint: "demo1", name: "Laser Ape #204", imageUrl: "https://placehold.co/400x400/1e1e2e/facc15?text=Laser+Ape", traits: [{trait_type:"Eyes", value:"Laser"}, {trait_type:"Fur", value:"Gold"}, {trait_type:"Background", value:"Neon Wasteland"}] },
+                { mint: "demo2", name: "Cyber Panda #88", imageUrl: "https://placehold.co/400x400/2a2a3a/44ccff?text=Cyber+Panda", traits: [{trait_type:"Armor", value:"Cybernetic"}, {trait_type:"Weapon", value:"Plasma Claws"}, {trait_type:"Rarity", value:"Rare"}] },
+                { mint: "demo3", name: "Zombie Cat", imageUrl: "https://placehold.co/400x400/331111/aa6644?text=Zombie+Cat", traits: [{trait_type:"Undead", value:"Feral"}, {trait_type:"Stealth", value:"Shadow"}] }
+            ];
+        }
+        
+        // Generate LORE from NFT (using Gemini based on traits and name)
+        async function generateLoreForNft(nft) {
+            if (!GEMINI_API_KEY) return `Wandering soul ${nft.name} emerged from the ruins, bearing scars of countless battles.`;
+            const traitsDesc = (nft.traits || []).map(t => `${t.trait_type}:${t.value}`).join(", ");
+            const prompt = `Create one dark, immersive sentence of survivor lore for an NFT character named "${nft.name}". Traits: ${traitsDesc || "mysterious scavenger"}. The lore should feel like it was scanned from the NFT image: gritty, post-apocalyptic, unique. Return ONLY the lore text (max 140 chars).`;
+            try {
+                const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:generateContent?key=${GEMINI_API_KEY}`, {
+                    method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })
+                });
+                const data = await res.json();
+                let lore = data.candidates?.[0]?.content?.parts?.[0]?.text || `${nft.name} walks the irradiated path, fearless.`;
+                return lore.slice(0, 180);
+            } catch(e) { return `The relic known as ${nft.name} endures the endless desert.`; }
+        }
+        
+        // Derive RPG stats from traits
+        function deriveStatsFromTraits(traits) {
+            let base = { attack: 12, defense: 10, luck: 10, leadership: 10, supplies: 22 };
+            (traits || []).forEach(t => {
+                const val = (t.value || "").toString().toLowerCase();
+                if (val.includes("laser") || val.includes("plasma")) base.attack += 8;
+                if (val.includes("gold") || val.includes("royal") || val.includes("crown")) base.leadership += 9;
+                if (val.includes("rare") || val.includes("legendary")) { base.luck += 6; base.defense += 5; }
+                if (val.includes("stealth") || val.includes("shadow")) base.luck += 7;
+                if (val.includes("zombie") || val.includes("undead")) { base.attack += 4; base.defense += 2; }
+                if (val.includes("cyber") || val.includes("robot")) { base.attack += 5; base.luck += 3; }
+                if (val.includes("ape") || val.includes("beast")) base.attack += 5;
+                if (val.includes("panda")) base.defense += 6;
+            });
+            return base;
+        }
+        
+        function updateStatsUI() {
+            document.getElementById("statAtk").innerText = gameStats.attack;
+            document.getElementById("statDef").innerText = gameStats.defense;
+            document.getElementById("statLck").innerText = gameStats.luck;
+            document.getElementById("statLdr").innerText = gameStats.leadership;
+            document.getElementById("statSup").innerText = gameStats.supplies;
+            document.getElementById("statKill").innerText = gameStats.kills;
+            document.getElementById("statAlly").innerText = gameStats.alliances;
+        }
+        
+        function addLogMessage(msg, isError = false) {
+            const logDiv = document.getElementById("logBox");
+            const p = document.createElement("div");
+            p.className = `log-line ${isError ? 'border-red-500 text-red-300' : 'border-yellow-500 text-gray-200'}`;
+            p.innerHTML = `<i class="fas ${isError ? 'fa-skull' : 'fa-feather-alt'} mr-1 text-yellow-500 text-[10px]"></i> ${msg}`;
+            logDiv.appendChild(p);
+            p.scrollIntoView({ behavior: "smooth", block: "nearest" });
+        }
+        
+        // Reset game state after NFT selection
+        async function onSelectNft(nft) {
+            selectedNft = nft;
+            // Update UI details
+            document.getElementById("selectedNftImage").src = nft.imageUrl || "https://placehold.co/400x400/2a2a3a/facc15?text=NFT";
+            document.getElementById("selectedNftName").innerText = nft.name;
+            const traitsHtml = (nft.traits || []).slice(0,5).map(t => `<span class="badge-trait">${t.trait_type || 'attr'}: ${t.value}</span>`).join('');
+            document.getElementById("selectedTraits").innerHTML = traitsHtml || '<span class="text-gray-500 text-xs">raw survivor</span>';
+            document.getElementById("selectedNftPanel").classList.remove("hidden");
+            // Generate fresh lore for this NFT (image-scanned style)
+            document.getElementById("loreText").innerHTML = '<i class="fas fa-spinner fa-pulse"></i> scanning NFT & generating lore...';
+            const lore = await generateLoreForNft(nft);
+            document.getElementById("loreText").innerHTML = lore;
+            // Derive stats and set as initial gameStats
+            const derived = deriveStatsFromTraits(nft.traits);
+            gameStats = { ...derived, kills: 0, alliances: 0, betrayals: 0, supplies: derived.supplies };
+            updateStatsUI();
+            // Reset game session state
+            gameActive = false;
+            eliminated = false;
+            currentDay = 0;
+            allianceActive = null;
+            document.getElementById("dayCounter")?.remove(); // we will add day display later - but we need a day display area.
+            // ensure day counter exists
+            if(!document.getElementById("dayDisplay")) {
+                const dayElem = document.createElement("div");
+                dayElem.id = "dayDisplay";
+                dayElem.className = "text-center text-lg font-mono font-bold bg-black/40 rounded-xl p-1 mt-1";
+                document.querySelector(".flex.gap-3").before(dayElem);
+            }
+            document.getElementById("dayDisplay").innerHTML = `📆 DAY ${currentDay}`;
+            document.getElementById("gameStatusBadge").innerHTML = "✅ NFT ready";
+            document.getElementById("startGameBtn").disabled = false;
+            document.getElementById("nextDayBtn").disabled = true;
+            addLogMessage(`🎮 "${nft.name}" selected as survivor. Press START to begin the wasteland journey.`, false);
+        }
+        
+        // Render NFT grid from userNfts
+        function renderNftGrid() {
+            const grid = document.getElementById("nftGrid");
+            if (!userNfts.length) {
+                grid.innerHTML = '<div class="col-span-3 text-center text-gray-400 text-xs py-4">No NFTs found or wallet not connected</div>';
+                return;
+            }
+            grid.innerHTML = userNfts.map((nft, idx) => `
+                <div class="nft-grid-item bg-black/60 rounded-xl overflow-hidden p-1 flex flex-col items-center" data-idx="${idx}">
+                    <img src="${nft.imageUrl || 'https://placehold.co/400x400/333344/facc15?text=NFT'}" class="w-full aspect-square object-cover rounded-lg">
+                    <span class="text-[10px] mt-1 text-center truncate w-full px-1">${nft.name.length>18?nft.name.slice(0,16)+'..':nft.name}</span>
+                </div>
+            `).join('');
+            // attach events
+            document.querySelectorAll('.nft-grid-item').forEach(el => {
+                el.addEventListener('click', async (e) => {
+                    const idx = parseInt(el.dataset.idx);
+                    if (userNfts[idx]) {
+                        // remove selected class from all
+                        document.querySelectorAll('.nft-grid-item').forEach(i => i.classList.remove('selected'));
+                        el.classList.add('selected');
+                        await onSelectNft(userNfts[idx]);
+                    }
+                });
+            });
+            document.getElementById("nftCountBadge").innerHTML = `${userNfts.length} NFTs`;
+        }
+        
+        // ----- GAME LOGIC: Gemini event generation -----
+        async function generateDayEvent(day, stats, nft, alliance) {
+            if (!GEMINI_API_KEY) return fallbackEvent(day);
+            const prompt = `NFT Survivor Day ${day}. Survivor: ${nft.name}. Attack ${stats.attack}, Defense ${stats.defense}, Luck ${stats.luck}, Leadership ${stats.leadership}, Supplies ${stats.supplies}. Alliance: ${alliance ? `with ${alliance.partner} (${alliance.strength}%)` : "none"}. Generate a unique brutal event. Return JSON: {"event":"short text","outcome":"result","suppliesDelta":int,"attackDelta":int,"defenseDelta":int,"luckDelta":int,"leadershipDelta":int,"killsIncrement":int,"allianceFormed":bool,"betrayalOccurred":bool}. No extra text.`;
+            try {
+                const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:generateContent?key=${GEMINI_API_KEY}`, {
+                    method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })
+                });
+                const data = await res.json();
+                const raw = data.candidates?.[0]?.content?.parts?.[0]?.text || "";
+                const match = raw.match(/\{[\s\S]*\}/);
+                if (match) return JSON.parse(match[0]);
+                return fallbackEvent(day);
+            } catch(e) { return fallbackEvent(day); }
+        }
+        
+        function fallbackEvent(day) {
+            return { event: `Day ${day}: Searching rubble yields supplies`, outcome: "Salvage successful", suppliesDelta: 3, attackDelta:0, defenseDelta:1, luckDelta:1, leadershipDelta:0, killsIncrement:0, allianceFormed:false, betrayalOccurred:false };
+        }
+        
+        async function processDay() {
+            if (!gameActive || eliminated) { addLogMessage("Game not active. Start Survival first.", true); return; }
+            if (currentDay >= maxDays) {
+                addLogMessage(`🏆 EPIC VICTORY! ${selectedNft.name} survived ${maxDays} days!`, true);
+                gameActive = false;
+                document.getElementById("nextDayBtn").disabled = true;
+                return;
+            }
+            currentDay++;
+            document.getElementById("dayDisplay").innerHTML = `📆 DAY ${currentDay}`;
+            const ev = await generateDayEvent(currentDay, gameStats, selectedNft, allianceActive);
+            // apply deltas
+            gameStats.supplies = Math.max(0, gameStats.supplies + (ev.suppliesDelta || 0));
+            gameStats.attack += ev.attackDelta || 0;
+            gameStats.defense += ev.defenseDelta || 0;
+            gameStats.luck += ev.luckDelta || 0;
+            gameStats.leadership += ev.leadershipDelta || 0;
+            if (ev.killsIncrement) gameStats.kills += ev.killsIncrement;
+            if (ev.allianceFormed && !allianceActive) {
+                allianceActive = { partner: `Wasteland ${selectedNft.traits?.[0]?.value || "Stranger"}`, strength: Math.floor(Math.random() * 50 + 50) };
+                gameStats.alliances++;
+                addLogMessage(`🤝 ALLIANCE with ${allianceActive.partner}! Strength ${allianceActive.strength}%`, false);
+            }
+            if (ev.betrayalOccurred && allianceActive) {
+                gameStats.betrayals++;
+                addLogMessage(`💔 BETRAYAL! ${allianceActive.partner} stole supplies. Alliance broken!`, false);
+                gameStats.supplies = Math.max(0, gameStats.supplies - 6);
+                allianceActive = null;
+            }
+            // death checks
+            let death = false;
+            if (gameStats.supplies <= 0) death = true;
+            if (!death && gameStats.luck <= 2 && Math.random() < 0.1) death = true;
+            if (!death && gameStats.attack <= 3 && currentDay > 5 && Math.random() < 0.08) death = true;
+            
+            if (death && !eliminated) {
+                eliminated = true;
+                gameActive = false;
+                addLogMessage(`💀💀 ELIMINATED: ${selectedNft.name} died on Day ${currentDay}. Game Over.`, true);
+                document.getElementById("nextDayBtn").disabled = true;
+                document.getElementById("startGameBtn").disabled = true;
+                document.getElementById("gameStatusBadge").innerHTML = "💀 eliminated";
+                updateStatsUI();
+                return;
+            }
+            addLogMessage(`[DAY ${currentDay}] ${ev.event} → ${ev.outcome} | supplies ${ev.suppliesDelta>=0?`+${ev.suppliesDelta}`:ev.suppliesDelta}`, false);
+            updateStatsUI();
+            document.getElementById("gameStatusBadge").innerHTML = `⚔️ day ${currentDay}`;
+            if (currentDay === maxDays) {
+                addLogMessage(`✨ SURVIVED ${maxDays} days! Legend status achieved.`, true);
+                gameActive = false;
+                document.getElementById("nextDayBtn").disabled = true;
+            }
+        }
+        
+        // ---------- WALLET CONNECTION WITH SIGNATURE PERMISSION ----------
+        async function connectWalletAndGrantPermission() {
+            if (!window.solana || !window.solana.isPhantom) {
+                alert("Please install Phantom wallet");
+                return;
+            }
+            try {
+                const resp = await window.solana.connect();
+                const pubKey = resp.publicKey.toString();
+                walletPublicKey = pubKey;
+                // Request signature to prove ownership & permission to view NFTs (user signs a message)
+                const message = "NFT Survivor: Grant permission to view my NFT collection for in-game survival simulation. No data stored, secure sign-in.";
+                const encodedMsg = new TextEncoder().encode(message);
+                const signed = await window.solana.signMessage(encodedMsg, "utf8");
+                if (signed) {
+                    walletConnected = true;
+                    document.getElementById("walletPermStatus").innerHTML = `✅ ${pubKey.slice(0,4)}...${pubKey.slice(-4)} · permission granted`;
+                    document.getElementById("walletButtonContainer").innerHTML = `<button id="disconnectBtn" class="bg-gray-800 text-sm px-3 py-2 rounded-full"><i class="fas fa-link"></i> Disconnect</button>`;
+                    addLogMessage(`🔓 Wallet authorized. Scanning your NFTs...`, false);
+                    // fetch actual NFTs
+                    const nfts = await fetchNFTsFromWallet(pubKey);
+                    userNfts = nfts;
+                    renderNftGrid();
+                    if (userNfts.length > 0) {
+                        addLogMessage(`✨ Found ${userNfts.length} NFTs. Select one to start!`, false);
+                    } else {
+                        addLogMessage(`No NFTs found, but demo collection loaded.`, true);
+                    }
+                    document.getElementById("disconnectBtn")?.addEventListener("click", async()=>{
+                        await window.solana.disconnect();
+                        resetFullUI();
+                    });
+                } else {
+                    addLogMessage("Signature required to view NFTs.", true);
+                }
+            } catch(e) {
+                console.error(e);
+                addLogMessage("Connection failed or rejected.", true);
+            }
+        }
+        
+        function resetFullUI() {
+            walletConnected = false; walletPublicKey = null; userNfts = []; selectedNft = null;
+            document.getElementById("walletButtonContainer").innerHTML = `<button id="connectWalletBtn" class="bg-yellow-500 text-black text-sm font-bold px-4 py-2 rounded-full"><i class="fab fa-phantom"></i> Connect & Sign</button>`;
+            document.getElementById("nftGrid").innerHTML = '<div class="col-span-3 text-center text-gray-400 text-xs py-4">Connect wallet to see NFTs</div>';
+            document.getElementById("selectedNftPanel").classList.add("hidden");
+            document.getElementById("walletPermStatus").innerHTML = "🔒 not connected";
+            document.getElementById("gameStatusBadge").innerHTML = "⚡ waiting";
+            document.getElementById("startGameBtn").disabled = true;
+            document.getElementById("nextDayBtn").disabled = true;
+            if(document.getElementById("dayDisplay")) document.getElementById("dayDisplay").innerHTML = "📆 DAY 0";
+            initWalletButton();
+        }
+        
+        function initWalletButton() {
+            const btn = document.getElementById("connectWalletBtn");
+            if (btn) btn.onclick = connectWalletAndGrantPermission;
+        }
+        
+        // ----- EVENT LISTENERS -----
+        document.getElementById("clearLogBtn")?.addEventListener("click", ()=> { document.getElementById("logBox").innerHTML = `<div class="text-center text-gray-500 italic">📜 chronicle cleared</div>`; });
+        document.getElementById("startGameBtn")?.addEventListener("click", async () => {
+            if (!selectedNft) { addLogMessage("Select an NFT from your collection first!", true); return; }
+            if (gameActive) { addLogMessage("Game already in progress. Reset by refreshing or disconnect.", true); return; }
+            // reset game fully
+            const derived = deriveStatsFromTraits(selectedNft.traits);
+            gameStats = { ...derived, kills: 0, alliances: 0, betrayals: 0, supplies: derived.supplies };
+            currentDay = 0;
+            eliminated = false;
+            allianceActive = null;
+            gameActive = true;
+            updateStatsUI();
+            document.getElementById("dayDisplay").innerHTML = `📆 DAY 0`;
+            document.getElementById("nextDayBtn").disabled = false;
+            document.getElementById("gameStatusBadge").innerHTML = "🏕️ survivor active";
+            addLogMessage(`🔥 SURVIVAL STARTED! ${selectedNft.name} enters the arena. Click Next Day.`, false);
+        });
+        document.getElementById("nextDayBtn")?.addEventListener("click", async () => {
+            if (!gameActive || !selectedNft) { addLogMessage("Select NFT and press Start Survival first.", true); return; }
+            await processDay();
+        });
+        
+        fetchApiKeys().then(() => {
+            document.getElementById("walletButtonContainer").innerHTML = `<button id="connectWalletBtn" class="bg-yellow-500 text-black text-sm font-bold px-4 py-2 rounded-full"><i class="fab fa-phantom"></i> Connect & Sign</button>`;
+            initWalletButton();
+            // add day display placeholder
+            const dayDiv = document.createElement("div");
+            dayDiv.id = "dayDisplay";
+            dayDiv.className = "text-center text-lg font-mono font-bold bg-black/40 rounded-xl p-2 my-1";
+            document.querySelector(".flex.gap-3").before(dayDiv);
+            dayDiv.innerHTML = "📆 DAY 0";
+        });
+    </script>
+</body>
+</html>
