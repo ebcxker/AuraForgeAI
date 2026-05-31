@@ -1,0 +1,606 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Add Wings · Subject Stays EXACTLY The Same</title>
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        h1 {
+            text-align: center;
+            color: white;
+            margin-bottom: 10px;
+            font-size: 2.5rem;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.2);
+        }
+
+        .subtitle {
+            text-align: center;
+            color: #a0a0a0;
+            margin-bottom: 30px;
+            font-size: 1.1rem;
+        }
+
+        .comparison-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 25px;
+            margin-bottom: 25px;
+        }
+
+        .card {
+            background: white;
+            border-radius: 20px;
+            padding: 25px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+        }
+
+        .card-title {
+            font-size: 1.5rem;
+            font-weight: bold;
+            margin-bottom: 15px;
+            color: #333;
+            border-bottom: 3px solid #667eea;
+            padding-bottom: 10px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .image-area {
+            background: #f5f5f5;
+            border-radius: 15px;
+            padding: 20px;
+            text-align: center;
+            min-height: 450px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 15px;
+            position: relative;
+        }
+
+        .image-area img {
+            max-width: 100%;
+            max-height: 400px;
+            object-fit: contain;
+            border-radius: 10px;
+        }
+
+        .placeholder {
+            color: #999;
+            text-align: center;
+            padding: 60px 20px;
+        }
+
+        button {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 50px;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin: 5px;
+            font-weight: bold;
+        }
+
+        button:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+        }
+
+        button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .btn-generate {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            font-size: 1.1rem;
+            padding: 14px 28px;
+        }
+
+        .status {
+            background: #f8f9fa;
+            border-left: 4px solid #667eea;
+            padding: 12px;
+            margin-top: 15px;
+            border-radius: 8px;
+            font-size: 0.9rem;
+        }
+
+        .loader {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid rgba(255,255,255,0.3);
+            border-radius: 50%;
+            border-top-color: white;
+            animation: spin 0.8s linear infinite;
+            margin-right: 8px;
+            vertical-align: middle;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .wing-controls {
+            margin-top: 20px;
+            padding: 15px;
+            background: #f0f0f0;
+            border-radius: 10px;
+        }
+
+        .slider-container {
+            margin: 10px 0;
+        }
+
+        .slider-container label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+            color: #333;
+        }
+
+        input[type="range"] {
+            width: 100%;
+            margin: 5px 0;
+        }
+
+        .wing-style {
+            display: flex;
+            gap: 10px;
+            margin: 15px 0;
+            flex-wrap: wrap;
+        }
+
+        .style-btn {
+            background: #e0e7ff;
+            color: #333;
+            font-size: 0.85rem;
+            padding: 8px 16px;
+        }
+
+        .style-btn.active {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .guarantee-box {
+            background: #dcfce7;
+            border-left: 4px solid #10b981;
+            padding: 12px;
+            margin-top: 15px;
+            border-radius: 8px;
+            font-size: 0.85rem;
+            text-align: center;
+        }
+
+        @media (max-width: 768px) {
+            .comparison-grid {
+                grid-template-columns: 1fr;
+            }
+            h1 {
+                font-size: 1.8rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🦋 Add Wings · Preserve Subject</h1>
+        <div class="subtitle">YOUR SUBJECT STAYS 100% IDENTICAL · Only wings are added</div>
+
+        <div class="comparison-grid">
+            <!-- Left Panel: Upload -->
+            <div class="card">
+                <div class="card-title">
+                    📤 YOUR SUBJECT (WILL NOT CHANGE)
+                    <span style="font-size: 0.8rem; background: #10b981; color: white; padding: 4px 12px; border-radius: 20px;">🔒 LOCKED · UNCHANGED</span>
+                </div>
+                <div class="image-area" id="uploadArea">
+                    <img id="uploadedImage" src="" style="display: none;">
+                    <div id="uploadPlaceholder" class="placeholder">
+                        📸 Upload YOUR subject here<br>
+                        This image will stay EXACTLY the same<br>
+                        (Person, pet, character, anything)
+                    </div>
+                </div>
+                <input type="file" id="fileInput" accept="image/jpeg,image/png,image/webp" style="display: none;">
+                <div style="text-align: center;">
+                    <button onclick="document.getElementById('fileInput').click()">
+                        📁 Upload Your Subject
+                    </button>
+                    <button onclick="clearImage()" style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);">
+                        🗑 Clear
+                    </button>
+                </div>
+                
+                <div class="guarantee-box">
+                    🔒 <strong>GUARANTEE:</strong> Your uploaded subject will remain 100% identical. Every pixel of your original image is preserved. We ONLY add wings behind/around your subject.
+                </div>
+            </div>
+
+            <!-- Right Panel: Result -->
+            <div class="card">
+                <div class="card-title">
+                    ✨ RESULT · Subject + Wings
+                    <span style="font-size: 0.8rem; background: #8b5cf6; color: white; padding: 4px 12px; border-radius: 20px;">🦋 WINGS ADDED</span>
+                </div>
+                <div class="image-area" id="resultArea">
+                    <img id="resultImage" src="" style="display: none;">
+                    <div id="resultPlaceholder" class="placeholder">
+                        🦋 Your subject WITH wings will appear here<br>
+                        Subject stays EXACTLY the same, wings added behind/around
+                    </div>
+                </div>
+                
+                <div class="wing-controls">
+                    <div class="wing-style">
+                        <strong>Wing Style:</strong>
+                        <button id="styleAngel" class="style-btn active" onclick="setWingStyle('angel')">👼 Angel Wings</button>
+                        <button id="styleButterfly" class="style-btn" onclick="setWingStyle('butterfly')">🦋 Butterfly Wings</button>
+                        <button id="styleDragon" class="style-btn" onclick="setWingStyle('dragon')">🐉 Dragon Wings</button>
+                        <button id="styleFeathery" class="style-btn" onclick="setWingStyle('feathery')">🪶 Feathery Wings</button>
+                    </div>
+                    
+                    <div class="slider-container">
+                        <label>📏 Wing Size</label>
+                        <input type="range" id="wingSize" min="50" max="200" value="100">
+                        <span id="sizeValue" style="font-size: 0.8rem;">100%</span>
+                    </div>
+                    
+                    <div class="slider-container">
+                        <label>📍 Wing Position (Vertical offset)</label>
+                        <input type="range" id="wingOffset" min="-50" max="50" value="0">
+                        <span id="offsetValue" style="font-size: 0.8rem;">Center</span>
+                    </div>
+                </div>
+                
+                <div style="text-align: center;">
+                    <button id="generateBtn" onclick="addWingsToSubject()" class="btn-generate">
+                        🦋 Add Wings · Keep Subject Identical
+                    </button>
+                </div>
+                
+                <div class="status" id="statusMessage">
+                    ⚡ Ready. Upload your subject → Choose wing style → Generate (Your subject will NOT change)
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // DOM Elements
+        const fileInput = document.getElementById('fileInput');
+        const uploadedImage = document.getElementById('uploadedImage');
+        const uploadPlaceholder = document.getElementById('uploadPlaceholder');
+        const resultImage = document.getElementById('resultImage');
+        const resultPlaceholder = document.getElementById('resultPlaceholder');
+        const generateBtn = document.getElementById('generateBtn');
+        const statusDiv = document.getElementById('statusMessage');
+        const wingSize = document.getElementById('wingSize');
+        const sizeValue = document.getElementById('sizeValue');
+        const wingOffset = document.getElementById('wingOffset');
+        const offsetValue = document.getElementById('offsetValue');
+        
+        // State
+        let currentImageFile = null;
+        let currentImageDataUrl = null;
+        let isGenerating = false;
+        let currentWingStyle = 'angel';
+        
+        // Update slider displays
+        wingSize.addEventListener('input', () => {
+            sizeValue.textContent = wingSize.value + '%';
+        });
+        
+        wingOffset.addEventListener('input', () => {
+            const val = parseInt(wingOffset.value);
+            if (val > 0) offsetValue.textContent = '↓ ' + val + 'px';
+            else if (val < 0) offsetValue.textContent = '↑ ' + Math.abs(val) + 'px';
+            else offsetValue.textContent = 'Center';
+        });
+        
+        function setWingStyle(style) {
+            currentWingStyle = style;
+            document.querySelectorAll('.style-btn').forEach(btn => btn.classList.remove('active'));
+            if (style === 'angel') document.getElementById('styleAngel').classList.add('active');
+            if (style === 'butterfly') document.getElementById('styleButterfly').classList.add('active');
+            if (style === 'dragon') document.getElementById('styleDragon').classList.add('active');
+            if (style === 'feathery') document.getElementById('styleFeathery').classList.add('active');
+        }
+        
+        // Handle file upload
+        fileInput.addEventListener('change', (e) => {
+            if (e.target.files && e.target.files.length > 0) {
+                const file = e.target.files[0];
+                if (!file.type.startsWith('image/')) {
+                    statusDiv.innerHTML = '❌ Please upload an image file';
+                    statusDiv.style.borderLeftColor = '#dc2626';
+                    return;
+                }
+                
+                if (file.size > 15 * 1024 * 1024) {
+                    statusDiv.innerHTML = '⚠️ Image too large (max 15MB).';
+                    statusDiv.style.borderLeftColor = '#f97316';
+                    return;
+                }
+                
+                currentImageFile = file;
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    currentImageDataUrl = e.target.result;
+                    uploadedImage.src = currentImageDataUrl;
+                    uploadedImage.style.display = 'block';
+                    uploadPlaceholder.style.display = 'none';
+                    statusDiv.innerHTML = '✅ Subject loaded! This image will remain 100% IDENTICAL. Click to add wings.';
+                    statusDiv.style.borderLeftColor = '#10b981';
+                };
+                reader.readAsDataURL(file);
+            }
+        });
+        
+        function clearImage() {
+            currentImageFile = null;
+            currentImageDataUrl = null;
+            uploadedImage.src = '';
+            uploadedImage.style.display = 'none';
+            uploadPlaceholder.style.display = 'flex';
+            resultImage.src = '';
+            resultImage.style.display = 'none';
+            resultPlaceholder.style.display = 'flex';
+            statusDiv.innerHTML = '🖼️ Subject cleared. Upload a new image (it will NOT change).';
+            statusDiv.style.borderLeftColor = '#667eea';
+        }
+        
+        // Draw wings based on style
+        function drawWings(ctx, centerX, centerY, wingWidth, wingHeight, style, wingSizePercent) {
+            const sizeMultiplier = wingSizePercent / 100;
+            const actualWingWidth = wingWidth * sizeMultiplier;
+            const actualWingHeight = wingHeight * sizeMultiplier;
+            
+            ctx.save();
+            ctx.shadowBlur = 0;
+            
+            if (style === 'angel') {
+                // Angel wings - elegant curved feathers
+                // Left wing
+                ctx.beginPath();
+                ctx.moveTo(centerX - 10, centerY);
+                ctx.quadraticCurveTo(centerX - actualWingWidth * 0.7, centerY - actualWingHeight * 0.8, centerX - actualWingWidth, centerY - actualWingHeight * 0.3);
+                ctx.quadraticCurveTo(centerX - actualWingWidth * 0.8, centerY + actualWingHeight * 0.2, centerX - 10, centerY);
+                ctx.fillStyle = '#ffffff';
+                ctx.fill();
+                ctx.strokeStyle = '#c0c0c0';
+                ctx.stroke();
+                
+                // Feather details left
+                for (let i = 0; i < 5; i++) {
+                    ctx.beginPath();
+                    ctx.moveTo(centerX - 15 - i * 8, centerY - 5 + i * 3);
+                    ctx.quadraticCurveTo(centerX - actualWingWidth * 0.5 - i * 5, centerY - actualWingHeight * 0.4 + i * 2, centerX - actualWingWidth * 0.8, centerY - actualWingHeight * 0.2);
+                    ctx.strokeStyle = '#e0e0e0';
+                    ctx.stroke();
+                }
+                
+                // Right wing
+                ctx.beginPath();
+                ctx.moveTo(centerX + 10, centerY);
+                ctx.quadraticCurveTo(centerX + actualWingWidth * 0.7, centerY - actualWingHeight * 0.8, centerX + actualWingWidth, centerY - actualWingHeight * 0.3);
+                ctx.quadraticCurveTo(centerX + actualWingWidth * 0.8, centerY + actualWingHeight * 0.2, centerX + 10, centerY);
+                ctx.fillStyle = '#ffffff';
+                ctx.fill();
+                ctx.stroke();
+                
+            } else if (style === 'butterfly') {
+                // Butterfly wings - colorful and patterned
+                // Left upper wing
+                ctx.beginPath();
+                ctx.moveTo(centerX - 10, centerY);
+                ctx.quadraticCurveTo(centerX - actualWingWidth * 0.6, centerY - actualWingHeight * 0.7, centerX - actualWingWidth, centerY - actualWingHeight * 0.2);
+                ctx.quadraticCurveTo(centerX - actualWingWidth * 0.7, centerY + actualWingHeight * 0.1, centerX - 10, centerY);
+                ctx.fillStyle = '#ff6b9d';
+                ctx.fill();
+                
+                // Left lower wing
+                ctx.beginPath();
+                ctx.moveTo(centerX - 10, centerY);
+                ctx.quadraticCurveTo(centerX - actualWingWidth * 0.5, centerY + actualWingHeight * 0.5, centerX - actualWingWidth * 0.8, centerY + actualWingHeight * 0.6);
+                ctx.quadraticCurveTo(centerX - actualWingWidth * 0.3, centerY + actualWingHeight * 0.2, centerX - 10, centerY);
+                ctx.fillStyle = '#ff9a9e';
+                ctx.fill();
+                
+                // Right upper wing
+                ctx.beginPath();
+                ctx.moveTo(centerX + 10, centerY);
+                ctx.quadraticCurveTo(centerX + actualWingWidth * 0.6, centerY - actualWingHeight * 0.7, centerX + actualWingWidth, centerY - actualWingHeight * 0.2);
+                ctx.quadraticCurveTo(centerX + actualWingWidth * 0.7, centerY + actualWingHeight * 0.1, centerX + 10, centerY);
+                ctx.fillStyle = '#ff6b9d';
+                ctx.fill();
+                
+                // Right lower wing
+                ctx.beginPath();
+                ctx.moveTo(centerX + 10, centerY);
+                ctx.quadraticCurveTo(centerX + actualWingWidth * 0.5, centerY + actualWingHeight * 0.5, centerX + actualWingWidth * 0.8, centerY + actualWingHeight * 0.6);
+                ctx.quadraticCurveTo(centerX + actualWingWidth * 0.3, centerY + actualWingHeight * 0.2, centerX + 10, centerY);
+                ctx.fillStyle = '#ff9a9e';
+                ctx.fill();
+                
+                // Wing patterns (circles)
+                ctx.fillStyle = '#ffffff';
+                ctx.beginPath();
+                ctx.arc(centerX - actualWingWidth * 0.6, centerY - actualWingHeight * 0.3, actualWingWidth * 0.08, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.beginPath();
+                ctx.arc(centerX + actualWingWidth * 0.6, centerY - actualWingHeight * 0.3, actualWingWidth * 0.08, 0, Math.PI * 2);
+                ctx.fill();
+                
+            } else if (style === 'dragon') {
+                // Dragon/bat wings - webbed and pointy
+                ctx.fillStyle = '#4a2f2f';
+                ctx.strokeStyle = '#2a1a1a';
+                
+                // Left wing
+                ctx.beginPath();
+                ctx.moveTo(centerX - 10, centerY);
+                ctx.lineTo(centerX - actualWingWidth * 0.8, centerY - actualWingHeight * 0.6);
+                ctx.lineTo(centerX - actualWingWidth * 0.5, centerY - actualWingHeight * 0.2);
+                ctx.lineTo(centerX - actualWingWidth, centerY);
+                ctx.lineTo(centerX - actualWingWidth * 0.6, centerY + actualWingHeight * 0.3);
+                ctx.lineTo(centerX - 10, centerY);
+                ctx.fill();
+                ctx.stroke();
+                
+                // Right wing
+                ctx.beginPath();
+                ctx.moveTo(centerX + 10, centerY);
+                ctx.lineTo(centerX + actualWingWidth * 0.8, centerY - actualWingHeight * 0.6);
+                ctx.lineTo(centerX + actualWingWidth * 0.5, centerY - actualWingHeight * 0.2);
+                ctx.lineTo(centerX + actualWingWidth, centerY);
+                ctx.lineTo(centerX + actualWingWidth * 0.6, centerY + actualWingHeight * 0.3);
+                ctx.lineTo(centerX + 10, centerY);
+                ctx.fill();
+                ctx.stroke();
+                
+                // Web lines
+                ctx.beginPath();
+                ctx.moveTo(centerX - 10, centerY);
+                ctx.lineTo(centerX - actualWingWidth * 0.65, centerY - actualWingHeight * 0.4);
+                ctx.stroke();
+                ctx.beginPath();
+                ctx.moveTo(centerX + 10, centerY);
+                ctx.lineTo(centerX + actualWingWidth * 0.65, centerY - actualWingHeight * 0.4);
+                ctx.stroke();
+                
+            } else if (style === 'feathery') {
+                // Feathery wings - soft and layered
+                for (let layer = 0; layer < 3; layer++) {
+                    const offset = layer * 8;
+                    ctx.fillStyle = `rgba(255, 255, 255, ${0.7 - layer * 0.2})`;
+                    
+                    // Left
+                    ctx.beginPath();
+                    ctx.moveTo(centerX - 10 - offset, centerY);
+                    ctx.quadraticCurveTo(centerX - actualWingWidth * 0.5 - offset * 2, centerY - actualWingHeight * 0.5, centerX - actualWingWidth + offset, centerY - actualWingHeight * 0.1);
+                    ctx.quadraticCurveTo(centerX - actualWingWidth * 0.6, centerY + actualWingHeight * 0.1, centerX - 10 - offset, centerY);
+                    ctx.fill();
+                    
+                    // Right
+                    ctx.beginPath();
+                    ctx.moveTo(centerX + 10 + offset, centerY);
+                    ctx.quadraticCurveTo(centerX + actualWingWidth * 0.5 + offset * 2, centerY - actualWingHeight * 0.5, centerX + actualWingWidth - offset, centerY - actualWingHeight * 0.1);
+                    ctx.quadraticCurveTo(centerX + actualWingWidth * 0.6, centerY + actualWingHeight * 0.1, centerX + 10 + offset, centerY);
+                    ctx.fill();
+                }
+            }
+            
+            ctx.restore();
+        }
+        
+        async function addWingsToSubject() {
+            if (!currentImageFile) {
+                statusDiv.innerHTML = '⚠️ Please upload your subject image first.';
+                statusDiv.style.borderLeftColor = '#f97316';
+                return;
+            }
+            
+            if (isGenerating) {
+                statusDiv.innerHTML = '⏳ Adding wings... Please wait.';
+                return;
+            }
+            
+            isGenerating = true;
+            generateBtn.disabled = true;
+            generateBtn.innerHTML = '<span class="loader"></span> Adding wings... (Subject stays same)';
+            statusDiv.innerHTML = '🦋 Adding wings to your subject. Your original image will NOT change.';
+            statusDiv.style.borderLeftColor = '#3b82f6';
+            
+            resultPlaceholder.style.display = 'flex';
+            resultPlaceholder.innerHTML = '⏳ Drawing wings behind your subject...<br>Your original subject will remain 100% intact';
+            resultImage.style.display = 'none';
+            
+            const img = new Image();
+            img.onload = function() {
+                // Create canvas with extra space for wings
+                const wingSizePercent = parseInt(wingSize.value);
+                const offsetY = parseInt(wingOffset.value);
+                
+                // Calculate dimensions with padding for wings
+                const padding = Math.max(img.width, img.height) * 0.5;
+                const canvasWidth = img.width + padding;
+                const canvasHeight = img.height + padding;
+                
+                const canvas = document.createElement('canvas');
+                canvas.width = canvasWidth;
+                canvas.height = canvasHeight;
+                const ctx = canvas.getContext('2d');
+                
+                // Clear canvas with transparent background
+                ctx.clearRect(0, 0, canvasWidth, canvasHeight);
+                
+                // Calculate center position for wings (behind subject)
+                const subjectCenterX = canvasWidth / 2;
+                const subjectCenterY = (canvasHeight / 2) + offsetY;
+                
+                // Draw wings FIRST (behind the subject)
+                const wingWidth = img.width * 0.8;
+                const wingHeight = img.height * 0.6;
+                
+                drawWings(ctx, subjectCenterX, subjectCenterY, wingWidth, wingHeight, currentWingStyle, wingSizePercent);
+                
+                // Draw the ORIGINAL subject on top - PIXEL PERFECT PRESERVATION
+                // Subject is drawn EXACTLY as uploaded, no modifications
+                const subjectX = subjectCenterX - (img.width / 2);
+                const subjectY = subjectCenterY - (img.height / 2);
+                ctx.drawImage(img, subjectX, subjectY, img.width, img.height);
+                
+                // Optional: Add subtle glow to wings (doesn't affect subject)
+                if (currentWingStyle === 'angel') {
+                    ctx.shadowBlur = 0;
+                }
+                
+                // Convert to blob and display
+                canvas.toBlob((blob) => {
+                    const url = URL.createObjectURL(blob);
+                    resultImage.src = url;
+                    resultImage.style.display = 'block';
+                    resultPlaceholder.style.display = 'none';
+                    statusDiv.innerHTML = `✅ Wings added! Your subject is 100% IDENTICAL to the original. (Style: ${currentWingStyle})`;
+                    statusDiv.style.borderLeftColor = '#10b981';
+                    
+                    if (window._currentResultUrl) {
+                        URL.revokeObjectURL(window._currentResultUrl);
+                    }
+                    window._currentResultUrl = url;
+                    
+                    isGenerating = false;
+                    generateBtn.disabled = false;
+                    generateBtn.innerHTML = '🦋 Add Wings · Keep Subject Identical';
+                }, 'image/png');
+            };
+            
+            img.src = currentImageDataUrl;
+        }
+    </script>
+</body>
+</html>
