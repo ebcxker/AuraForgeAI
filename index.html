@@ -1,0 +1,493 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes, viewport-fit=cover">
+    <title>NFT Survivor — Auto Battle Arena</title>
+    <!-- Tailwind + Font Awesome -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <!-- Solana Web3 + Phantom -->
+    <script src="https://unpkg.com/@solana/web3.js@1.87.6/lib/index.iife.js"></script>
+    <style>
+        * { -webkit-tap-highlight-color: transparent; }
+        body { background: #0a0a0f; font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif; }
+        .glass-card { background: rgba(18, 18, 28, 0.95); backdrop-filter: blur(12px); border: 1px solid rgba(250, 204, 21, 0.3); border-radius: 28px; }
+        .nft-select-card { background: linear-gradient(135deg, #1a1a2a 0%, #0f0f1a 100%); border-radius: 24px; transition: all 0.2s; cursor: pointer; }
+        .nft-select-card.selected { border: 2px solid #facc15; background: rgba(250,204,21,0.1); transform: scale(0.98); }
+        .badge-trait { background: rgba(250,204,21,0.15); border-radius: 40px; padding: 4px 12px; font-size: 0.7rem; font-weight: 500; }
+        .log-line { border-left: 3px solid #facc15; padding-left: 12px; margin-bottom: 8px; font-size: 0.7rem; animation: fadeIn 0.2s; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateX(-5px);} to { opacity: 1; } }
+        button:active { transform: scale(0.97); }
+        .stat-pill { background: rgba(0,0,0,0.6); border-radius: 20px; padding: 6px 12px; text-align: center; }
+        .player-card { background: rgba(0,0,0,0.4); border-radius: 12px; padding: 6px; transition: all 0.1s; }
+        .eliminated { opacity: 0.4; filter: grayscale(0.5); background: #1f1f2a; }
+        .auto-scroll { scroll-behavior: smooth; }
+    </style>
+</head>
+<body class="text-gray-200 pb-24">
+    <div class="max-w-lg mx-auto px-4 py-4 space-y-4">
+        <!-- HEADER + Wallet -->
+        <div class="flex justify-between items-center">
+            <div class="flex items-center gap-2">
+                <i class="fas fa-skull text-2xl text-yellow-400"></i>
+                <h1 class="text-xl font-black bg-gradient-to-r from-yellow-300 to-orange-500 bg-clip-text text-transparent">NFT SURVIVOR</h1>
+            </div>
+            <div id="walletButtonContainer"></div>
+        </div>
+
+        <!-- Status & permission indicator -->
+        <div class="glass-card px-4 py-2 flex justify-between items-center text-xs">
+            <div class="flex items-center gap-2"><i class="fas fa-shield-alt text-yellow-500"></i><span id="walletPermStatus">🔒 not connected</span></div>
+            <div id="gameStatusBadge" class="bg-black/50 px-2 py-1 rounded-full text-[10px]">⚡ idle</div>
+        </div>
+
+        <!-- NFT SELECTION GRID (horizontal scroll) - appears only before selection -->
+        <div id="nftSelectionArea" class="glass-card p-3 space-y-2">
+            <div class="flex justify-between"><span class="text-xs font-bold"><i class="fas fa-images"></i> Your NFT Collection</span><span id="nftCountBadge" class="text-[10px]">—</span></div>
+            <div id="nftGrid" class="flex gap-2 overflow-x-auto pb-2 snap-x">
+                <div class="text-center text-gray-500 text-xs p-4 w-full">Connect wallet to load NFTs</div>
+            </div>
+            <div class="text-center text-[10px] text-gray-400">Tap any NFT to select as your survivor</div>
+        </div>
+
+        <!-- MAIN SURVIVOR DISPLAY (hidden until NFT selected) -->
+        <div id="survivorDisplay" class="glass-card p-0 overflow-hidden hidden">
+            <div class="flex flex-row">
+                <!-- left: NFT image half -->
+                <div class="w-1/2 bg-black/40 p-3 flex items-center justify-center border-r border-yellow-500/20">
+                    <img id="selectedNftImage" class="w-28 h-28 rounded-2xl object-cover border-2 border-yellow-500 shadow-lg" src="">
+                </div>
+                <!-- right: lore + traits half -->
+                <div class="w-1/2 p-3 flex flex-col justify-between">
+                    <div>
+                        <h3 id="selectedNftName" class="font-bold text-base truncate">—</h3>
+                        <div id="selectedTraits" class="flex flex-wrap gap-1 mt-2"></div>
+                    </div>
+                    <div class="mt-2 bg-black/30 rounded-xl p-2">
+                        <p id="loreText" class="text-[11px] text-gray-300 italic leading-tight">—</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- STATS PANEL (compact) -->
+        <div class="glass-card p-3">
+            <div class="grid grid-cols-4 gap-1 text-center text-[11px]">
+                <div class="stat-pill"><span class="text-yellow-400">⚔️ATK</span><br><span id="statAtk" class="font-bold">0</span></div>
+                <div class="stat-pill"><span class="text-blue-400">🛡️DEF</span><br><span id="statDef" class="font-bold">0</span></div>
+                <div class="stat-pill"><span class="text-green-400">🍀LCK</span><br><span id="statLck" class="font-bold">0</span></div>
+                <div class="stat-pill"><span class="text-purple-400">👑LDR</span><br><span id="statLdr" class="font-bold">0</span></div>
+                <div class="stat-pill col-span-2"><span class="text-orange-300">🥫SUP</span><br><span id="statSup" class="font-bold">0</span></div>
+                <div class="stat-pill"><span class="text-red-400">💀KILL</span><br><span id="statKill" class="font-bold">0</span></div>
+                <div class="stat-pill"><span class="text-rose-300">🤝ALLY</span><br><span id="statAlly" class="font-bold">0</span></div>
+            </div>
+        </div>
+
+        <!-- GAME LOG / CHRONICLE BOX (auto-scroll) -->
+        <div class="glass-card p-3">
+            <div class="flex justify-between mb-1"><span class="text-xs font-bold"><i class="fas fa-scroll"></i> Survivor Chronicle</span><button id="clearLogBtn" class="text-[9px] text-gray-400">clear</button></div>
+            <div id="logBox" class="h-48 overflow-y-auto text-[11px] space-y-1 font-mono bg-black/20 rounded-lg p-2"></div>
+        </div>
+
+        <!-- SINGLE START BUTTON -->
+        <button id="startGameBtn" disabled class="w-full bg-gradient-to-r from-yellow-600 to-yellow-500 hover:from-yellow-500 hover:to-yellow-400 disabled:opacity-40 py-4 rounded-2xl font-bold text-lg flex items-center justify-center gap-2 transition-all"><i class="fas fa-play"></i> START SURVIVAL (20+ Players)</button>
+        <div id="autoPlayMsg" class="text-center text-[10px] text-gray-400">⚡ Game auto-plays day by day until one champion remains</div>
+    </div>
+
+    <script>
+        // ---------- GLOBALS ----------
+        let walletPublicKey = null;
+        let walletConnected = false;
+        let allNfts = [];               // all NFTs from wallet
+        let selectedNft = null;
+        let gameActive = false;
+        let currentDay = 0;
+        let maxDays = 35;               // auto until 1 survivor
+        let allianceActive = null;
+        
+        // PLAYER SYSTEM: 20+ participants (selected NFT + generated NPCs)
+        let players = [];               // { id, name, attack, defense, luck, leadership, supplies, kills, alliances, betrayals, eliminated, isUser, imageUrl, traits }
+        let userPlayerIndex = -1;
+        let gameLoopInterval = null;
+        let gameFinished = false;
+        
+        // API keys
+        let HELIUS_API_KEY = "";
+        let GEMINI_API_KEY = "";
+        
+        // ---------- FETCH API KEYS ----------
+        async function fetchApiKeys() {
+            try {
+                const heliusResp = await fetch("https://api.jsonbin.io/v3/b/6a1c618eddf5aa59f77c451e/latest");
+                const heliusData = await heliusResp.json();
+                HELIUS_API_KEY = heliusData.record?.helius_key || heliusData.helius_key || "";
+                const gemResp = await fetch("https://api.jsonbin.io/v3/b/6a1c59d3ddf5aa59f77c3034/latest");
+                const gemData = await gemResp.json();
+                GEMINI_API_KEY = gemData.record?.key || gemData.key || "";
+                console.log("Keys ready", HELIUS_API_KEY ? "Helius OK" : "No Helius", GEMINI_API_KEY ? "Gemini OK" : "No Gemini");
+            } catch(e) { console.warn(e); }
+        }
+        
+        // ---------- FETCH ALL NFTs (unfiltered, including non-verified) ----------
+        async function fetchAllNFTsFromWallet(ownerAddress) {
+            if (!HELIUS_API_KEY) return getDemoNftsExpanded();
+            const url = `https://mainnet.helius-rpc.com/?api-key=${HELIUS_API_KEY}`;
+            try {
+                const response = await fetch(url, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        jsonrpc: "2.0",
+                        id: "get-all-nfts",
+                        method: "getAssetsByOwner",
+                        params: { ownerAddress: ownerAddress, page: 1, limit: 100, displayOptions: { showCollectionMetadata: true, showFungible: false } }
+                    })
+                });
+                const data = await response.json();
+                const items = data.result?.items || [];
+                // include ALL assets that are NFTs (no filtering by interface strictly, take everything non-fungible)
+                const nfts = items.map(asset => ({
+                    mint: asset.id,
+                    name: asset.content?.metadata?.name || "Unknown Entity",
+                    imageUrl: asset.content?.links?.image || "",
+                    traits: asset.content?.metadata?.attributes || []
+                }));
+                if (nfts.length === 0) return getDemoNftsExpanded();
+                return nfts;
+            } catch(e) {
+                console.error("Helius error", e);
+                return getDemoNftsExpanded();
+            }
+        }
+        
+        function getDemoNftsExpanded() {
+            return [
+                { mint: "demo1", name: "Laser Ape #204", imageUrl: "https://placehold.co/400x400/1e1e2e/facc15?text=Laser+Ape", traits: [{trait_type:"Eyes", value:"Laser"},{trait_type:"Fur","value":"Gold"}] },
+                { mint: "demo2", name: "Cyber Panda #88", imageUrl: "https://placehold.co/400x400/2a2a3a/44ccff?text=Cyber+Panda", traits: [{trait_type:"Armor", value:"Cybernetic"}] },
+                { mint: "demo3", name: "Zombie Cat", imageUrl: "https://placehold.co/400x400/331111/aa6644?text=Zombie+Cat", traits: [{trait_type:"Undead", value:"Feral"}] },
+                { mint: "demo4", name: "Skull Raider", imageUrl: "https://placehold.co/400x400/222222/cc4444?text=Skull+Raid", traits: [{trait_type:"Weapon", value:"Axe"}] }
+            ];
+        }
+        
+        // Generate Lore
+        async function generateLoreForNft(nft) {
+            if (!GEMINI_API_KEY) return `${nft.name} — survivor of the broken wastes.`;
+            const traitsDesc = (nft.traits || []).map(t => `${t.trait_type}:${t.value}`).join(", ");
+            const prompt = `One sentence dark lore for NFT survivor "${nft.name}" (${traitsDesc}). Max 100 chars.`;
+            try {
+                const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:generateContent?key=${GEMINI_API_KEY}`, {
+                    method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })
+                });
+                const data = await res.json();
+                return data.candidates?.[0]?.content?.parts?.[0]?.text || `${nft.name} endures.`;
+            } catch(e) { return `Wasteland walker: ${nft.name}.`; }
+        }
+        
+        function deriveStatsFromTraits(traits) {
+            let base = { attack: 12, defense: 10, luck: 10, leadership: 10, supplies: 22 };
+            (traits || []).forEach(t => {
+                const val = (t.value || "").toString().toLowerCase();
+                if (val.includes("laser") || val.includes("plasma")) base.attack += 8;
+                if (val.includes("gold") || val.includes("crown")) base.leadership += 9;
+                if (val.includes("rare") || val.includes("legendary")) { base.luck += 6; base.defense += 5; }
+                if (val.includes("stealth")) base.luck += 7;
+                if (val.includes("zombie")) { base.attack += 4; }
+                if (val.includes("cyber")) { base.attack += 5; base.luck += 3; }
+            });
+            return base;
+        }
+        
+        // CREATE GAME WITH 20+ PLAYERS (user's NFT + generated NPCs)
+        function createGameWithPlayers(userNft) {
+            const userStats = deriveStatsFromTraits(userNft.traits);
+            const playersArr = [];
+            // add user
+            playersArr.push({
+                id: "user",
+                name: userNft.name,
+                imageUrl: userNft.imageUrl,
+                attack: userStats.attack,
+                defense: userStats.defense,
+                luck: userStats.luck,
+                leadership: userStats.leadership,
+                supplies: userStats.supplies,
+                kills: 0,
+                alliances: 0,
+                betrayals: 0,
+                eliminated: false,
+                isUser: true,
+                traits: userNft.traits
+            });
+            // generate 24-30 NPCs
+            const npcCount = Math.floor(Math.random() * 15) + 24; // 24 to 38 total players
+            const npcNames = ["Wasteland Ronin", "Scavenger Queen", "Rust Prophet", "Glowing Ghoul", "Cyber Shaman", "Mutant Bear", "Desert Fox", "Iron Maiden", "Cinder Beast", "Phantom Walker", "Cobalt Raider", "Venom Stalker", "Ash Revenant", "Steel Mongrel", "Crimson Wraith", "Bone Collector", "Toxin Drifter", "Solar Zealot", "Frost Reaver", "Obsidian Knight", "Ember Hound", "Gutter Rat", "Oracle of Ruin", "Silent Jackal", "Molten Giant", "Thorn Prophet", "Rust Devil", "Spark Hermit", "Acid Pilgrim", "Cinder Witch"];
+            for (let i = 0; i < npcCount; i++) {
+                const randomName = npcNames[Math.floor(Math.random() * npcNames.length)] + ` #${i+1}`;
+                playersArr.push({
+                    id: `npc_${i}`,
+                    name: randomName,
+                    imageUrl: `https://placehold.co/400x400/2a2a3a/facc15?text=${randomName.slice(0,3)}`,
+                    attack: Math.floor(Math.random() * 25) + 8,
+                    defense: Math.floor(Math.random() * 22) + 8,
+                    luck: Math.floor(Math.random() * 20) + 5,
+                    leadership: Math.floor(Math.random() * 20) + 5,
+                    supplies: Math.floor(Math.random() * 30) + 15,
+                    kills: 0,
+                    alliances: 0,
+                    betrayals: 0,
+                    eliminated: false,
+                    isUser: false,
+                    traits: []
+                });
+            }
+            return playersArr;
+        }
+        
+        function updateStatsUIFromUser() {
+            if (!selectedNft) return;
+            const user = players.find(p => p.isUser);
+            if (user) {
+                document.getElementById("statAtk").innerText = user.attack;
+                document.getElementById("statDef").innerText = user.defense;
+                document.getElementById("statLck").innerText = user.luck;
+                document.getElementById("statLdr").innerText = user.leadership;
+                document.getElementById("statSup").innerText = user.supplies;
+                document.getElementById("statKill").innerText = user.kills;
+                document.getElementById("statAlly").innerText = user.alliances;
+            }
+        }
+        
+        function addLogMessage(msg, isError = false) {
+            const logDiv = document.getElementById("logBox");
+            const p = document.createElement("div");
+            p.className = `log-line ${isError ? 'border-red-500 text-red-300' : 'border-yellow-500 text-gray-200'}`;
+            p.innerHTML = `<i class="fas ${isError ? 'fa-skull' : 'fa-feather-alt'} mr-1 text-yellow-500 text-[10px]"></i> ${msg}`;
+            logDiv.appendChild(p);
+            p.scrollIntoView({ behavior: "smooth", block: "nearest" });
+        }
+        
+        // AUTO-RESOLVE DAY: process events for all active players + random encounters
+        async function processGameDay() {
+            if (!gameActive || gameFinished) return;
+            const activePlayers = players.filter(p => !p.eliminated);
+            if (activePlayers.length <= 1) {
+                // GAME OVER
+                const winner = players.find(p => !p.eliminated);
+                gameActive = false;
+                gameFinished = true;
+                if (gameLoopInterval) clearInterval(gameLoopInterval);
+                addLogMessage(`🏆 SURVIVOR CROWNED: ${winner.name} conquered the wasteland after ${currentDay} days! 🏆`, false);
+                document.getElementById("gameStatusBadge").innerHTML = "🏁 FINISHED";
+                document.getElementById("startGameBtn").disabled = false;
+                document.getElementById("startGameBtn").innerHTML = '<i class="fas fa-undo"></i> Play Again';
+                return;
+            }
+            currentDay++;
+            document.getElementById("gameStatusBadge").innerHTML = `⚔️ Day ${currentDay} · ${activePlayers.length} left`;
+            
+            // For each active player, generate a mini event (Gemini batch simplified) but for performance, we simulate dynamic events with randomness + alliance/betrayal
+            // create random events that affect stats & alliances
+            for (let p of activePlayers) {
+                if (p.eliminated) continue;
+                // Random encounter based on luck
+                const luckRoll = Math.random() * 100 + p.luck;
+                if (luckRoll > 70) {
+                    let supplyGain = Math.floor(Math.random() * 8) + 2;
+                    p.supplies += supplyGain;
+                    addLogMessage(`${p.name} found supplies +${supplyGain}`, false);
+                } else if (luckRoll < 25) {
+                    let loss = Math.floor(Math.random() * 6) + 1;
+                    p.supplies = Math.max(0, p.supplies - loss);
+                    addLogMessage(`${p.name} lost supplies (ambush) -${loss}`, true);
+                }
+                // attack/defense random modifications
+                if (Math.random() < 0.2) {
+                    let atkMod = Math.floor(Math.random() * 5) - 2;
+                    p.attack = Math.max(3, p.attack + atkMod);
+                }
+                // Alliance logic: randomly pair survivors
+                if (activePlayers.length > 2 && Math.random() < 0.1 && !p.alliancePartner) {
+                    const other = activePlayers.find(op => op !== p && !op.alliancePartner);
+                    if (other) {
+                        p.alliancePartner = other.id;
+                        other.alliancePartner = p.id;
+                        p.alliances++;
+                        other.alliances++;
+                        addLogMessage(`🤝 ALLIANCE: ${p.name} + ${other.name} formed a pact!`, false);
+                    }
+                }
+                // betrayal
+                if (p.alliancePartner && Math.random() < 0.08) {
+                    const ally = players.find(a => a.id === p.alliancePartner);
+                    if (ally && !ally.eliminated) {
+                        p.betrayals++;
+                        p.supplies += 5;
+                        ally.supplies = Math.max(0, ally.supplies - 5);
+                        addLogMessage(`💔 BETRAYAL: ${p.name} stole from ally ${ally.name}!`, true);
+                        p.alliancePartner = null;
+                        if(ally) ally.alliancePartner = null;
+                    } else { p.alliancePartner = null; }
+                }
+                // PvP combat encounter: random fight
+                if (Math.random() < 0.12 && activePlayers.length > 1) {
+                    let opponents = activePlayers.filter(op => op !== p);
+                    if (opponents.length) {
+                        let target = opponents[Math.floor(Math.random() * opponents.length)];
+                        let pPower = p.attack + p.luck/2;
+                        let tPower = target.attack + target.luck/2;
+                        if (pPower > tPower) {
+                            target.eliminated = true;
+                            p.kills++;
+                            addLogMessage(`⚔️ COMBAT: ${p.name} eliminated ${target.name}!`, true);
+                        } else {
+                            p.eliminated = true;
+                            target.kills++;
+                            addLogMessage(`⚔️ COMBAT: ${target.name} eliminated ${p.name}!`, true);
+                        }
+                    }
+                }
+                // Death by supply
+                if (p.supplies <= 0) {
+                    p.eliminated = true;
+                    addLogMessage(`💀 STARVATION: ${p.name} died from lack of supplies.`, true);
+                }
+                p.supplies = Math.min(99, p.supplies);
+            }
+            // update UI stats for user
+            updateStatsUIFromUser();
+            // if user eliminated, game ends with message
+            const user = players.find(p => p.isUser);
+            if (user && user.eliminated) {
+                addLogMessage(`💀 GAME OVER: Your survivor ${user.name} has been eliminated on Day ${currentDay}.`, true);
+                gameActive = false;
+                gameFinished = true;
+                if (gameLoopInterval) clearInterval(gameLoopInterval);
+                document.getElementById("gameStatusBadge").innerHTML = "☠️ ELIMINATED";
+                document.getElementById("startGameBtn").disabled = false;
+                document.getElementById("startGameBtn").innerHTML = '<i class="fas fa-undo"></i> Try Again';
+                return;
+            }
+            // check winner again after eliminations
+            const remaining = players.filter(p => !p.eliminated);
+            if (remaining.length === 1) {
+                const winner = remaining[0];
+                gameActive = false;
+                gameFinished = true;
+                if (gameLoopInterval) clearInterval(gameLoopInterval);
+                addLogMessage(`🏆 FINAL SURVIVOR: ${winner.name} rules the wasteland after ${currentDay} days! 🏆`, false);
+                document.getElementById("gameStatusBadge").innerHTML = "🏁 VICTORY";
+                document.getElementById("startGameBtn").disabled = false;
+                document.getElementById("startGameBtn").innerHTML = '<i class="fas fa-undo"></i> New Game';
+            }
+        }
+        
+        function startGameLoop() {
+            if (gameLoopInterval) clearInterval(gameLoopInterval);
+            gameActive = true;
+            gameFinished = false;
+            currentDay = 0;
+            // reset alliance flags
+            players.forEach(p => { p.alliancePartner = null; p.eliminated = false; });
+            // restore user stats from selectedNft
+            const userStats = deriveStatsFromTraits(selectedNft.traits);
+            const userPlayer = players.find(p => p.isUser);
+            if (userPlayer) {
+                userPlayer.attack = userStats.attack;
+                userPlayer.defense = userStats.defense;
+                userPlayer.luck = userStats.luck;
+                userPlayer.leadership = userStats.leadership;
+                userPlayer.supplies = userStats.supplies;
+                userPlayer.kills = 0;
+                userPlayer.alliances = 0;
+                userPlayer.betrayals = 0;
+                userPlayer.eliminated = false;
+            }
+            updateStatsUIFromUser();
+            addLogMessage(`🔥 SURVIVAL BEGINS! ${players.length} warriors enter the arena. First to survive wins.`, false);
+            gameLoopInterval = setInterval(async () => {
+                if (!gameActive || gameFinished) return;
+                await processGameDay();
+                if (!gameActive) clearInterval(gameLoopInterval);
+            }, 2800); // auto day every 2.8 sec
+        }
+        
+        // NFT SELECTION HANDLER
+        async function onSelectNft(nft) {
+            selectedNft = nft;
+            // display main survivor card
+            document.getElementById("selectedNftImage").src = nft.imageUrl || "https://placehold.co/400x400/2a2a3a/facc15?text=NFT";
+            document.getElementById("selectedNftName").innerText = nft.name;
+            const traitsHtml = (nft.traits || []).slice(0,4).map(t => `<span class="badge-trait">${t.trait_type || 'trait'}: ${t.value}</span>`).join('');
+            document.getElementById("selectedTraits").innerHTML = traitsHtml || '<span class="text-xs">raw survivor</span>';
+            document.getElementById("survivorDisplay").classList.remove("hidden");
+            // hide nft selection area to reduce clutter
+            document.getElementById("nftSelectionArea").style.display = "none";
+            // generate lore
+            document.getElementById("loreText").innerHTML = '<i class="fas fa-spinner fa-pulse"></i> scanning...';
+            const lore = await generateLoreForNft(nft);
+            document.getElementById("loreText").innerHTML = lore;
+            // create players
+            players = createGameWithPlayers(nft);
+            updateStatsUIFromUser();
+            document.getElementById("startGameBtn").disabled = false;
+            addLogMessage(`✅ "${nft.name}" ready. ${players.length} total contestants will battle. Press START.`, false);
+        }
+        
+        // RENDER NFT GALLERY
+        function renderNftGallery(nfts) {
+            const grid = document.getElementById("nftGrid");
+            if (!nfts.length) { grid.innerHTML = '<div class="text-gray-400 text-xs p-2">No NFTs found</div>'; return; }
+            grid.innerHTML = nfts.map((nft, idx) => `
+                <div class="nft-select-card flex-shrink-0 w-24 p-2 text-center cursor-pointer" data-idx="${idx}">
+                    <img src="${nft.imageUrl || 'https://placehold.co/400x400/333344/facc15?text=NFT'}" class="w-20 h-20 mx-auto rounded-xl object-cover border border-gray-600">
+                    <span class="text-[10px] block mt-1 truncate w-20">${nft.name.slice(0, 14)}</span>
+                </div>
+            `).join('');
+            document.querySelectorAll('.nft-select-card').forEach(el => {
+                el.addEventListener('click', () => {
+                    const idx = parseInt(el.dataset.idx);
+                    if (nfts[idx]) onSelectNft(nfts[idx]);
+                });
+            });
+            document.getElementById("nftCountBadge").innerHTML = `${nfts.length} NFTs`;
+        }
+        
+        // WALLET CONNECTION + SIGNATURE
+        async function connectWallet() {
+            if (!window.solana || !window.solana.isPhantom) { alert("Install Phantom"); return; }
+            try {
+                const resp = await window.solana.connect();
+                const pubKey = resp.publicKey.toString();
+                const message = "NFT Survivor: grant view access to your NFTs for simulation.";
+                const signed = await window.solana.signMessage(new TextEncoder().encode(message), "utf8");
+                if (signed) {
+                    walletPublicKey = pubKey;
+                    walletConnected = true;
+                    document.getElementById("walletPermStatus").innerHTML = `✅ ${pubKey.slice(0,4)}...${pubKey.slice(-4)} · granted`;
+                    document.getElementById("walletButtonContainer").innerHTML = `<button id="disconnectBtn" class="bg-gray-800 text-xs px-3 py-2 rounded-full">Disconnect</button>`;
+                    const nfts = await fetchAllNFTsFromWallet(pubKey);
+                    allNfts = nfts;
+                    renderNftGallery(allNfts);
+                    document.getElementById("disconnectBtn")?.addEventListener("click", async()=>{ await window.solana.disconnect(); location.reload(); });
+                } else { addLogMessage("Signature required", true); }
+            } catch(e) { addLogMessage("Connection error", true); }
+        }
+        
+        // EVENT LISTENERS
+        document.getElementById("clearLogBtn")?.addEventListener("click", ()=> { document.getElementById("logBox").innerHTML = ""; });
+        document.getElementById("startGameBtn")?.addEventListener("click", () => {
+            if (!selectedNft) { addLogMessage("Select an NFT first", true); return; }
+            if (gameLoopInterval) clearInterval(gameLoopInterval);
+            startGameLoop();
+            document.getElementById("startGameBtn").disabled = true;
+            document.getElementById("startGameBtn").innerHTML = '<i class="fas fa-spinner fa-pulse"></i> Simulation Running...';
+        });
+        
+        fetchApiKeys().then(() => {
+            document.getElementById("walletButtonContainer").innerHTML = `<button id="connectWalletBtn" class="bg-yellow-500 text-black text-sm font-bold px-4 py-2 rounded-full"><i class="fab fa-phantom"></i> Connect & Sign</button>`;
+            document.getElementById("connectWalletBtn")?.addEventListener("click", connectWallet);
+        });
+    </script>
+</body>
+</html>
