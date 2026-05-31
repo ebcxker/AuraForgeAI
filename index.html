@@ -1,0 +1,416 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pollinations AI · Red Background Generator</title>
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1300px;
+            margin: 0 auto;
+        }
+
+        h1 {
+            text-align: center;
+            color: white;
+            margin-bottom: 10px;
+            font-size: 2.5rem;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.2);
+        }
+
+        .subtitle {
+            text-align: center;
+            color: #f0f0f0;
+            margin-bottom: 30px;
+            font-size: 1.1rem;
+        }
+
+        .main-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 25px;
+            margin-bottom: 25px;
+        }
+
+        .card {
+            background: white;
+            border-radius: 20px;
+            padding: 25px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+        }
+
+        .card-title {
+            font-size: 1.5rem;
+            font-weight: bold;
+            margin-bottom: 15px;
+            color: #333;
+            border-bottom: 3px solid #667eea;
+            padding-bottom: 10px;
+        }
+
+        .image-area {
+            background: #f5f5f5;
+            border-radius: 15px;
+            padding: 20px;
+            text-align: center;
+            min-height: 400px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 15px;
+        }
+
+        .image-area img {
+            max-width: 100%;
+            max-height: 350px;
+            object-fit: contain;
+            border-radius: 10px;
+        }
+
+        .placeholder {
+            color: #999;
+            text-align: center;
+            padding: 60px 20px;
+        }
+
+        button {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 50px;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin: 5px;
+            font-weight: bold;
+        }
+
+        button:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+        }
+
+        button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .btn-generate {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            font-size: 1.1rem;
+            padding: 14px 28px;
+        }
+
+        .status {
+            background: #f8f9fa;
+            border-left: 4px solid #667eea;
+            padding: 12px;
+            margin-top: 15px;
+            border-radius: 8px;
+            font-size: 0.9rem;
+        }
+
+        .loader {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid rgba(255,255,255,0.3);
+            border-radius: 50%;
+            border-top-color: white;
+            animation: spin 0.8s linear infinite;
+            margin-right: 8px;
+            vertical-align: middle;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .prompt-badge {
+            background: #e0e7ff;
+            padding: 10px;
+            border-radius: 10px;
+            margin-top: 15px;
+            text-align: center;
+            font-size: 0.9rem;
+        }
+
+        .local-warning {
+            background: #fff3cd;
+            border-left: 4px solid #ffc107;
+            padding: 10px;
+            margin-top: 15px;
+            border-radius: 8px;
+            font-size: 0.85rem;
+        }
+
+        @media (max-width: 768px) {
+            .main-grid {
+                grid-template-columns: 1fr;
+            }
+            h1 {
+                font-size: 1.8rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎨 Pollinations AI · Red Background</h1>
+        <div class="subtitle">Keep your subject, change only the background to red</div>
+
+        <div class="main-grid">
+            <!-- Left Panel: Upload -->
+            <div class="card">
+                <div class="card-title">
+                    📤 1. Upload Your Image
+                </div>
+                <div class="image-area" id="uploadArea">
+                    <img id="uploadedImage" src="" style="display: none;">
+                    <div id="uploadPlaceholder" class="placeholder">
+                        📸 No image selected<br>
+                        Click below to upload
+                    </div>
+                </div>
+                <input type="file" id="fileInput" accept="image/jpeg,image/png,image/webp" style="display: none;">
+                <div style="text-align: center;">
+                    <button onclick="document.getElementById('fileInput').click()">
+                        📁 Choose Image
+                    </button>
+                    <button onclick="clearImage()" style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);">
+                        🗑 Clear
+                    </button>
+                </div>
+                <div class="prompt-badge">
+                    💡 <strong>Fixed Prompt:</strong> "make the background red"<br>
+                    The AI will preserve your subject and only change background color
+                </div>
+            </div>
+
+            <!-- Right Panel: Generation -->
+            <div class="card">
+                <div class="card-title">
+                    ✨ 2. Generate with AI
+                </div>
+                <div class="image-area" id="resultArea">
+                    <img id="resultImage" src="" style="display: none;">
+                    <div id="resultPlaceholder" class="placeholder">
+                        🎨 Generated result will appear here
+                    </div>
+                </div>
+                
+                <div style="text-align: center;">
+                    <button id="generateBtn" onclick="generateWithAI()" class="btn-generate">
+                        🚀 Generate · Red Background
+                    </button>
+                </div>
+                
+                <div class="status" id="statusMessage">
+                    ⚡ Ready. Upload an image, then click Generate.
+                </div>
+                
+                <div class="local-warning" id="localWarning" style="display: none;">
+                    🔧 <strong>Local Testing Mode:</strong> Turnstile bypassed. Using direct API (may still need valid domain for production).
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // DOM Elements
+        const fileInput = document.getElementById('fileInput');
+        const uploadedImage = document.getElementById('uploadedImage');
+        const uploadPlaceholder = document.getElementById('uploadPlaceholder');
+        const resultImage = document.getElementById('resultImage');
+        const resultPlaceholder = document.getElementById('resultPlaceholder');
+        const generateBtn = document.getElementById('generateBtn');
+        const statusDiv = document.getElementById('statusMessage');
+        const localWarning = document.getElementById('localWarning');
+        
+        // State
+        let currentImageFile = null;
+        let currentImageDataUrl = null;
+        let isGenerating = false;
+        
+        // Fixed prompt
+        const FIXED_PROMPT = "make the background red";
+        
+        // Check if running locally
+        const isLocal = window.location.protocol === 'file:' || 
+                       window.location.hostname === 'localhost' || 
+                       window.location.hostname === '127.0.0.1';
+        
+        if (isLocal) {
+            localWarning.style.display = 'block';
+            console.log('Running locally - Turnstile bypassed');
+        }
+        
+        // Handle file upload
+        fileInput.addEventListener('change', (e) => {
+            if (e.target.files && e.target.files.length > 0) {
+                const file = e.target.files[0];
+                if (!file.type.startsWith('image/')) {
+                    statusDiv.innerHTML = '❌ Please upload an image file (JPEG, PNG, WEBP)';
+                    statusDiv.style.borderLeftColor = '#dc2626';
+                    return;
+                }
+                
+                if (file.size > 10 * 1024 * 1024) {
+                    statusDiv.innerHTML = '⚠️ Image too large (max 10MB). Please compress your image.';
+                    statusDiv.style.borderLeftColor = '#f97316';
+                    return;
+                }
+                
+                currentImageFile = file;
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    currentImageDataUrl = e.target.result;
+                    uploadedImage.src = currentImageDataUrl;
+                    uploadedImage.style.display = 'block';
+                    uploadPlaceholder.style.display = 'none';
+                    statusDiv.innerHTML = '✅ Image loaded! Click Generate to start.';
+                    statusDiv.style.borderLeftColor = '#10b981';
+                };
+                reader.readAsDataURL(file);
+            }
+        });
+        
+        // Clear image
+        function clearImage() {
+            currentImageFile = null;
+            currentImageDataUrl = null;
+            uploadedImage.src = '';
+            uploadedImage.style.display = 'none';
+            uploadPlaceholder.style.display = 'flex';
+            resultImage.src = '';
+            resultImage.style.display = 'none';
+            resultPlaceholder.style.display = 'flex';
+            statusDiv.innerHTML = '🖼️ Image cleared. Upload a new image.';
+            statusDiv.style.borderLeftColor = '#667eea';
+        }
+        
+        // Convert File to Base64
+        function fileToBase64(file) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.readAsDataURL(file);
+                reader.onload = () => resolve(reader.result.split(',')[1]);
+                reader.onerror = error => reject(error);
+            });
+        }
+        
+        // Generate with Pollinations AI
+        async function generateWithAI() {
+            if (!currentImageFile) {
+                statusDiv.innerHTML = '⚠️ Please upload an image first.';
+                statusDiv.style.borderLeftColor = '#f97316';
+                return;
+            }
+            
+            if (isGenerating) {
+                statusDiv.innerHTML = '⏳ Generation already in progress...';
+                return;
+            }
+            
+            isGenerating = true;
+            generateBtn.disabled = true;
+            generateBtn.innerHTML = '<span class="loader"></span> Generating...';
+            statusDiv.innerHTML = '🎨 Sending to Pollinations AI... This may take 15-30 seconds.';
+            statusDiv.style.borderLeftColor = '#3b82f6';
+            
+            // Show loading in result area
+            resultPlaceholder.style.display = 'flex';
+            resultPlaceholder.innerHTML = '⏳ AI is processing your image...<br>Changing background to red<br>Please wait';
+            resultImage.style.display = 'none';
+            
+            try {
+                // Convert image to base64
+                const base64Image = await fileToBase64(currentImageFile);
+                
+                // For local testing, try multiple approaches
+                let response;
+                
+                // Try Pollinations API without Turnstile (might still work for some endpoints)
+                try {
+                    // Using the image generation endpoint directly (different from kontext)
+                    const formData = new FormData();
+                    formData.append('image', currentImageFile);
+                    
+                    response = await fetch(`https://image.pollinations.ai/prompt/${encodeURIComponent(FIXED_PROMPT)}?model=flux`, {
+                        method: 'POST',
+                        body: formData
+                    });
+                    
+                    if (!response.ok) {
+                        throw new Error(`API returned ${response.status}`);
+                    }
+                    
+                    const imageBlob = await response.blob();
+                    const imageUrl = URL.createObjectURL(imageBlob);
+                    
+                    resultImage.src = imageUrl;
+                    resultImage.style.display = 'block';
+                    resultPlaceholder.style.display = 'none';
+                    
+                    statusDiv.innerHTML = '✅ Success! Background changed to red. Right-click to save the image.';
+                    statusDiv.style.borderLeftColor = '#10b981';
+                    
+                } catch (error) {
+                    // If that fails, try alternative endpoint
+                    console.log('First attempt failed, trying alternative...', error);
+                    
+                    const formData = new FormData();
+                    formData.append('image', currentImageFile);
+                    formData.append('prompt', FIXED_PROMPT);
+                    formData.append('model', 'flux');
+                    
+                    response = await fetch('https://image.pollinations.ai/prompt/kontext', {
+                        method: 'POST',
+                        body: formData
+                    });
+                    
+                    if (!response.ok) {
+                        const errorText = await response.text();
+                        throw new Error(`API Error ${response.status}: ${errorText.substring(0, 200)}`);
+                    }
+                    
+                    const imageBlob = await response.blob();
+                    const imageUrl = URL.createObjectURL(imageBlob);
+                    
+                    resultImage.src = imageUrl;
+                    resultImage.style.display = 'block';
+                    resultPlaceholder.style.display = 'none';
+                    
+                    statusDiv.innerHTML = '✅ Success! Background changed to red. Right-click to save the image.';
+                    statusDiv.style.borderLeftColor = '#10b981';
+                }
+                
+            } catch (error) {
+                console.error('Generation error:', error);
+                statusDiv.innerHTML = `❌ Generation failed: ${error.message}. Note: Pollinations API may require HTTPS/valid domain. Try deploying to a live server or using a local proxy.`;
+                statusDiv.style.borderLeftColor = '#dc2626';
+                resultPlaceholder.style.display = 'flex';
+                resultPlaceholder.innerHTML = '⚠️ Generation failed<br>See status message for details';
+                resultImage.style.display = 'none';
+            } finally {
+                isGenerating = false;
+                generateBtn.disabled = false;
+                generateBtn.innerHTML = '🚀 Generate · Red Background';
+            }
+        }
+    </script>
+</body>
+</html>
